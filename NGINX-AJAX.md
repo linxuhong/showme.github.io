@@ -1,6 +1,6 @@
                            Nginx AJAX 跨域请求
 #### 1. 场景
--  网站www.a.com要通过ajax访问www.b.com的url,jd域名不支持jsonp，方法有很多。这里采用nginx处理
+-  网站www.a.com要通过ajax访问www.b.com的url,jd域名不支持jsonp，方法有很多.这里采用nginx处理
  
 [anchor-id]: http://nginx.org/en/
 
@@ -66,7 +66,7 @@
 <script type="text/javascript" src="https://cdn.bootcss.com/jquery/1.5.1/jquery.js"></script>
 <script type="text/javascript">
   
-  
+  // 直接请求jd url无法跨域
   var jd ="http://rankcore.m.jd.local/rankInfo?body={%22cateId%22:%22655%22,%22provinceId%22:%221%22,%22time%22:%221DAY%22,%22rankId%22:%22rank3001%22}&clientVersion=6.2.0&build=38335&client=apple&d_brand=Xiaomi&d_model=RedmiNote2&osVersion=5.0.2&screen=1920*1080&partner=test&uuid=869043021004155-fc64bab32c82&area=12_904_905_50601&networkType=wifi&pin=txjjzyzqbx"
   $.getJSON(jd,function(data){
      alert("Data: " + data + "\nStatus: " + status);
