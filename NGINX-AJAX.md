@@ -14,7 +14,7 @@
 #### 2. 修改nginx  Nginx配置   
 ##### 配置文件目录  {nginx_install_directory}/config/nginx.conf 
 
-
+~~~XML
       server {
          listen       80;
          
@@ -32,7 +32,7 @@
 			proxy_pass http://rankcore.m.jd.local/;
 		}
      }
- 
+~~~
 
  
 #### 3. 绑定host
