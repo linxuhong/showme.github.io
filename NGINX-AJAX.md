@@ -1,5 +1,5 @@
 
-#### Nginx AJAX 跨域请求
+#### 1. Nginx AJAX 跨域请求
 -  网站www.yhd.com要通过ajax访问jd的url,jd域名不支持jsonp，方法有很多。这里采用nginx处理
  
 [anchor-id]: http://nginx.org/en/
@@ -11,8 +11,8 @@ Nginx Home  Page
 
 
 
-####修改nginx  Nginx配置   
-#####配置文件目录  {nginx_install_directory}/config/nginx.conf 
+#### 2. 修改nginx  Nginx配置   
+##### 配置文件目录  {nginx_install_directory}/config/nginx.conf 
 
 
       server {
@@ -34,13 +34,13 @@ Nginx Home  Page
      }
  
 
-#### 启动nginx
+#### 3. 启动nginx
 
 执行命令： (重启 ，启动)
 + `nginx -s reload`
 +  `nginx.exe`
 
-###  jd url与yhd代理url对应关系如下　
+#### 4. jd url与yhd代理url对应关系如下　
 >请注意加精部分  /jd/api/  为yhd固定代码url前缀
   
 + jd域名：  http://rankcore.m.jd.local/rankInfo?
@@ -52,7 +52,7 @@ Nginx Home  Page
 	  + {host}:**/jd/ap**i/{**jd_path**}
 
 
-#### 直接请求 codes
+#### 5. 直接请求 codes
 
 ```html
 <html>
