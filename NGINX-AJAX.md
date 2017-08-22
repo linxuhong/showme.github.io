@@ -1,8 +1,6 @@
 **Nginx AJAX 跨域请求 **
 
-[TOCM]
-
-[TOC]
+ 
 ###问题
 
 -  网站www.yhd.com要通过ajax访问jd的url,jd域名不支持jsonp，方法有很多。这里采用nginx处理
