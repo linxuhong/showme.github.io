@@ -38,7 +38,7 @@
 #### 3. 绑定host
 `
 127.0.0.1  detail.yhd.com
-127.0.0.1  api_jd.yhd.com`
+   api_jd.yhd.com`
 
 #### 4. 启动nginx
 
