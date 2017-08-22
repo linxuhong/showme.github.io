@@ -1,4 +1,4 @@
-                Nginx AJAX 跨域请求
+                           Nginx AJAX 跨域请求
 #### 1. 场景
 -  网站www.a.com要通过ajax访问www.b.yhd.com的url,jd域名不支持jsonp，方法有很多。这里采用nginx处理
  
