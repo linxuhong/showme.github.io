@@ -14,24 +14,24 @@
 #### 2. 修改nginx  Nginx配置   
 ##### 配置文件目录  {nginx_install_directory}/config/nginx.conf 
 
-~~~XML
-      server {
-         listen       80;
-         
-         server_name  detail.yhd.com  api_jd.yhd.com ;
+```html
+  server {
+	 listen       80;
+	 
+	 server_name  detail.yhd.com  api_jd.yhd.com ;
 
-         location / {
-		     #add_header 'Access-Control-Allow-Origin' '*';
-			 #add_header 'Access-Control-Allow-Credentials' 'true';
-             root   html;
-             index  index.html index.htm;
-         }
-		 
-		 location ^~/jd/api/{
-			rewrite ^/jd/api/(.*)$ /$1 break;
-			proxy_pass http://rankcore.m.jd.local/;
-		}
-     }
+	 location / {
+		 #add_header 'Access-Control-Allow-Origin' '*';
+		 #add_header 'Access-Control-Allow-Credentials' 'true';
+		 root   html;
+		 index  index.html index.htm;
+	 }
+	 
+	 location ^~/jd/api/{
+		rewrite ^/jd/api/(.*)$ /$1 break;
+		proxy_pass http://rankcore.m.jd.local/;
+	}
+ }
 ~~~
 
  
