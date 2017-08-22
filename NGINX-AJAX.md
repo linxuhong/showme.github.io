@@ -72,7 +72,7 @@
      alert("Data: " + data + "\nStatus: " + status);
   });
    
-  // 使用yhd代理域名  
+  // 使用ajax sjon 请求yhd代理url  
   var yhdProxyUrl ="http://detail.yhd.com/jd/api/rankInfo?body={%22cateId%22:%22655%22,%22provinceId%22:%221%22,%22time%22:%221DAY%22,%22rankId%22:%22rank3001%22}&clientVersion=6.2.0&build=38335&client=apple&d_brand=Xiaomi&d_model=RedmiNote2&osVersion=5.0.2&screen=1920*1080&partner=test&uuid=869043021004155-fc64bab32c82&area=12_904_905_50601&networkType=wifi&pin=txjjzyzqbx"
   $.get(yhdProxyUrl,function(data){
      alert("Data: " + data + "\nStatus: " + status);
