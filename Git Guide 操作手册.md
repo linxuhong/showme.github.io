@@ -13,7 +13,7 @@
 2.切换到abc目录下 cd c:/abc
 3. 打开cmd
 
-###开始在电脑中初始化git ,增加一些代码
+####开始在电脑中初始化git ,增加一些代码
 
 git init     
 git remote add origin https://github.com/linxuhong/showme.github.io.git
@@ -22,7 +22,7 @@ git commit -m "提交代码"
 git push   origin master
 git push origin  dev_lxh
 
-##explan comman 解释代码
+#### explan comman 解释代码
  + `git init` 将用户所有的目录变成一个git仓库，其实就是在abc目录下建立 .get隐藏文件
  + `git remote add origin` 将git hub的一个远程仓库命名为origin，以后本地就可以用origin来指向远程的仓库 
  + `git add .`   将所有的文件，新增，修改的内容添加暂存区
