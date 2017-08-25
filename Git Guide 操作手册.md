@@ -15,12 +15,12 @@
 
 ####开始在电脑中初始化git ,增加一些代码
 
-git init     
-git remote add origin https://github.com/linxuhong/showme.github.io.git
-git add .
-git commit -m "提交代码"
-git push   origin master
-git push origin  dev_lxh
++ git init     
++ git remote add origin https://github.com/linxuhong/showme.github.io.git
++ git add .
++ git commit -m "提交代码"
++ git push   origin master
++ git push origin  dev_lxh
 
 #### explan comman 解释代码
  + `git init` 将用户所有的目录变成一个git仓库，其实就是在abc目录下建立 .get隐藏文件
