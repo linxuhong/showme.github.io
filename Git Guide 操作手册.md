@@ -31,51 +31,52 @@
  + `git push   origin dev_lxh    推送到github上，的dev_lxh分支 ，因为github上没有，他会自动创建一个dev_lxh的分支
  
  
-##### 
+##### 其他一些操作
 
-git checkout -b develop origin/dev_lxh
-git push origin --delete dev_lxh
++ `git checkout -b develop origin/dev_lxh`  从远程仓库origin拉回分支名为dev_lxh到本地
++ ` git push origin --delete dev_lxh`        删除远程分支
   
-###
-git fetch --all
+##### 把所有的远程分支拉取到本地仓库，但不合并工作区中的代码
++ ` git fetch --all`
+
+##### 用远程的dev_lxh分支，强制覆盖本地代码
++ `git reset --hard origin/dev_lxh`
+
+##### 用远程的\支, 强制覆盖本地代码
++  `git reset --hard HEAD`
+ 
 
 
-git reset --hard origin/dev_lxh
 
-git reset --hard HEAD
-###################### 
-
-
-
-### 
-git diff HEAD -- readme.txt 
-######只修改了#######
-git checkout -- readme.txt
-######################
+ 
+######只修改了,代码但是不要想了#######
++ `git checkout -- readme.txt `
+###### 删除代码
 git rm test.txt 
-####### 不小心add ##############
-git reset HEAD  file
+####### 不小心add ,想撤销 ##############
++ `git reset HEAD  file`
 
-#########################################
-git diff 比较的是工作区和暂存区的差别
-git diff --cached 比较的是暂存区和版本库的差别
-git diff HEAD 可以查看工作区和版本库的差别
-#######################################
-############# 【git 删除本地分支】
-git branch -D br
-############# 【git 从远程分支】
-git checkout -b develop origin/develop
+### git diff 
++ `git diff -- filename` 比较的是工作区和暂存区的差别
++ `git diff --cached ` 比较的是暂存区和版本库的差别
++ `git diff HEAD` 可以查看工作区和版本库的差别
+ 
+#### 【git 删除本地分支】
++ `git branch -D br `
+####【git 从远程分支】
++ `git checkout -b develop origin/develop `
 
-########重命名远程分支
-git push --delete origin develop
-git branch -m develop develop_old
+########重命名远程分支,先删除远程，重新命名本地，然后再push 
++ `git push --delete origin develop `
++  `git branch -m develop develop_old`
++ ` git push origin develop_old`
 
 
+###配置一下标识
++ `Git global setup`
 
-Git global setup
-
-git config --global user.name "linxuhong"
-git config --global user.email "linxuhong@jd.com"
++ `git config --global user.name "linxuhong" `
++ `git config --global user.email "linxuhong@hotmail.com" `
  
  
 
