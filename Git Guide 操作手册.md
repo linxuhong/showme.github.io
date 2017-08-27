@@ -70,7 +70,7 @@ git rm test.txt
 + ` git push origin develop_old`
 
 
-###配置一下标识
+### 配置一下标识
 + `Git global setup`
 
 + `git config --global user.name "linxuhong" `
