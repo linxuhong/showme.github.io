@@ -7,10 +7,10 @@
  
 ### Git简介，大家可以上网看看**B** and     `Code` text
 
-###从头创建一个仓库
-####可以先在github上创建一个仓库，地址为http://...../xxx.git
+### 从头创建一个仓库
+#### 可以先在github上创建一个仓库，地址为http://...../xxx.git
 1. 创建目录 c:/abc
-2.切换到abc目录下 cd c:/abc
+2. 切换到abc目录下 cd c:/abc
 3. 打开cmd
 
 ### 开始在电脑中初始化git ,增加一些代码
