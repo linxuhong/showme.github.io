@@ -47,7 +47,7 @@
 + `git checkout -- readme.txt `
 #### 删除代码
 git rm test.txt 
-### 不小心add ,想撤销 ##############
+#### 不小心add ,想撤销 ##############
 + `git reset HEAD  file`
 
 #### git diff 
