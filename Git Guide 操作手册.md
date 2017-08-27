@@ -45,15 +45,13 @@
 ##### 用远程的\支, 强制覆盖本地代码
 +  `git reset --hard HEAD`
  
-
-
-
  
-######只修改了,代码但是不要想了#######
+ 
+#### 只修改了,代码但是不要想了#######
 + `git checkout -- readme.txt `
-###### 删除代码
+### 删除代码
 git rm test.txt 
-####### 不小心add ,想撤销 ##############
+### 不小心add ,想撤销 ##############
 + `git reset HEAD  file`
 
 ### git diff 
@@ -61,12 +59,12 @@ git rm test.txt
 + `git diff --cached ` 比较的是暂存区和版本库的差别
 + `git diff HEAD` 可以查看工作区和版本库的差别
  
-#### 【git 删除本地分支】
+####  git 删除本地分支 
 + `git branch -D br `
-####【git 从远程分支】
+####  git 从远程分支 
 + `git checkout -b develop origin/develop `
 
-########重命名远程分支,先删除远程，重新命名本地，然后再push 
+#### 重命名远程分支,先删除远程，重新命名本地，然后再push 
 + `git push --delete origin develop `
 +  `git branch -m develop develop_old`
 + ` git push origin develop_old`
