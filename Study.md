@@ -10,6 +10,14 @@
     http://source.jd.com/app/yhd-mandy
 	http://blog.csdn.net/weiweicao0429/article/details/52095932
 
+	
+	搜索
+	http://source.jd.com/app/yhd-mandy
+	http://blog.csdn.net/weiweicao0429/article/details/52095932
+ 
+    venus日志查看链接
+	http://autodeploy.jd.com/log?domainId=604&logBasePath=/export/Domains/mapi.jd.yhd.com/server1&ipId=369
+
 #### 2.  
 #####  
 
