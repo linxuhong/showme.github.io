@@ -1,33 +1,34 @@
                            MAVEN 多环境打包
 #### 1. 场景
 -    你的工程有有很多配置，test ,dev,product 打包时想根据不同环境打包，你该怎么做
-  1. projecName
-    1. env  ---打包环境变量配置  
- 	    1 dev.property
-		1 test.property
-		3 product.property
-    1. src
-        1. main
-            1. java    
-            1. resources
-                 1.   config   --应用层配置
-                        1. dev  
-                             1.  jdbc.property  --jdbc配置
-                             1.  xxx.property   --xxx
-                        1. test  
-                             1. jdbc.property
-                             1. xxx.property
-                        1. product
-                             1. jdbc.property
-                             1. xxx.property
-				1. spring/
-				      spring_placeholder.xml
-					  applicationContex.mxl
-					  xxx.xml
-                             
-
   
- 
+  1. projecName
+		1. env  ---打包环境变量配置  
+			1 dev.property
+			1 test.property
+			3 product.property
+		1. src
+			1. main
+				1. java    
+				1. resources
+					 1.   config   --应用层配置
+							1. dev  
+								 1.  jdbc.property  --jdbc配置
+								 1.  xxx.property   --xxx
+							1. test  
+								 1. jdbc.property
+								 1. xxx.property
+							1. product
+								 1. jdbc.property
+								 1. xxx.property
+					1. spring/
+						  spring_placeholder.xml
+						  applicationContex.mxl
+						  xxx.xml
+								 
+
+	  
+	 
 
  
 
