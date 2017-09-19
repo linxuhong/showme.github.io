@@ -29,15 +29,15 @@
    12. server端的连接是如何共享的？
  
 ## 源代码分析关注点下几点
-    1. SPI机制的实现原理是什么？为什么要用这个？
-    2. 这么多的配置，究竟是如何在类间传递和保存的？
-    3. motan协议究竟是什么样子的？
-    4. 为什么要用动态代理，到底proxy了什么？
-	5. transport层是怎么进行抽象的？							 
-	6. transport层是怎么进行抽象的？							 
-    7.  client对server的心跳检测是怎么实现的呢？
-    8. client端的连接池是如何管理的？
-    9. server端的连接是如何共享的？
+1. SPI机制的实现原理是什么？为什么要用这个？
+2. 这么多的配置，究竟是如何在类间传递和保存的？
+3. motan协议究竟是什么样子的？
+4. 为什么要用动态代理，到底proxy了什么？
+5. transport层是怎么进行抽象的？							 
+6. transport层是怎么进行抽象的？							 
+7.  client对server的心跳检测是怎么实现的呢？
+8. client端的连接池是如何管理的？
+9. server端的连接是如何共享的？
     
 >  我将从以上几点对motan的源代码进行分析debug
    由于spring集成与解决涉及的内容比较多与杂，暂时先不作分析 
@@ -226,10 +226,10 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         if (exported.get()) {
             return;
         }
-
+        // [1]
         checkInterfaceAndMethods(interfaceClass, methods);
 
-        //  AbstractInterfaceConfig#loadRegistryUrls  父类的方法来收集
+        // [2]  AbstractInterfaceConfig#loadRegistryUrls  父类的方法来收集
         List<URL> registryUrls = loadRegistryUrls();
         if (registryUrls == null || registryUrls.size() == 0) {
             throw new IllegalStateException("Should set registry config for service:" + interfaceClass.getName());
@@ -241,6 +241,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             if (port == null) {
                 throw new MotanServiceException();
             }
+            // [3]
             doExport(protocolConfig, port, registryUrls);
         }
         afterExport();
@@ -272,7 +273,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         // {id=motan, export=motan:8002, protocol=motan, refreshTimestamp=1505801631928, group=motan-demo-rpc, nodeType=service, version=1.0}
         System.out.println(" 7 service param ==>" +map);
         URL serviceUrl = new URL(protocolName, hostAddress, port, interfaceClass.getName(), map);
-
+        // [4]
         if (serviceExists(serviceUrl)) {
             throw new MotanFrameworkException();
         }
@@ -295,8 +296,9 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             }
             urls.add(localRegistryUrl);
         } else {
+            // TODO 我使用的是 local，因此会走到此处
             for (URL ru : registryURLs) {
-                System.out.println(" 10 "+ ru);
+                System.out.println(" ru "+ ru);
                 urls.add(ru.createCopy());
             }
         }
@@ -305,10 +307,11 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             u.addParameter(URLParamType.embed.getName(), StringTools.urlEncode(serviceUrl.toFullStr()));
             registereUrls.add(u.createCopy());
         }
+        
         // [local://127.0.0.1:0/com.weibo.api.motan.registry.RegistryService?group=default_rpc]
         System.out.println(" 8 registereUrls ==>" +registereUrls);
         ConfigHandler configHandler = ExtensionLoader.getExtensionLoader(ConfigHandler.class).getExtension(MotanConstants.DEFAULT_VALUE);
-
+        // ~ [5]  ConfigHandler 如何加载 ~
         exporters.add(configHandler.export(interfaceClass, ref, urls));
 
         initLocalAppInfo(serviceUrl);
@@ -355,9 +358,20 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 }
  
 ```
-1.  AbstractInterfaceConfig#loadRegistryUrls 用于收集,serviceconfig中设置的注册中心信息
+1.  无论是spring方式，还是api的方式，最终会调用export()方法
+2.  loadRegistryUrls():返回注册中心地址，是一个list,打印出来后的结果如下：
+    - []local://127.0.0.1:0/com.weibo.api.motan.registry.RegistryService?group=default_rpc]
+    - AbstractInterfaceConfig#loadRegistryUrls 用于收集,serviceconfig中设置的注册中心信息
    > motanDemoService.setRegistry(zookeeperRegistry);
-   
+3. 执行 ` ServiceConfig#doExport() ` 方法 
+   1. 根据一系统 参数构造一个服务 service URL,请注意（motan中有register url ,servcieurl）
+      > URL serviceUrl = new URL(protocolName, hostAddress, port, interfaceClass.getName(), map);
+   2. 此URL对象模仿了 java 标准api的方法 : protocol url param,后面再分析这个URL，这个是整个motan协议结构的中心
+   3. 生成了 service  url,然后，通过sip的方式，找到ConfigHandler的实现类 SimpleConfigHandler
+      - `  ConfigHandler configHandler = ExtensionLoader.getExtensionLoader(ConfigHandler.class).getExtension(MotanConstants.DEFAULT_VALUE); ` 
+      - 通过configHandler个哦执行真正的export exporters.add(configHandler.export(interfaceClass, ref, urls))
+        - `  configHandler.export(interfaceClass, ref, urls) ` 
+        > 将 interfaceClass， ref，向多个注册中心，注册
  
  
  
