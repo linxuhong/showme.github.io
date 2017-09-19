@@ -543,7 +543,159 @@ public class DefaultProvider<T> extends AbstractProvider<T> {
 ######  DefaultRpcProtocol 如何暴露  DefaultProvider
 1. xxx
 
- 
+```java
+
+public class ProtocolFilterDecorator implements Protocol {
+       public ProtocolFilterDecorator(Protocol protocol) {
+            this.protocol = protocol; ///  TODO  默认使用  DefaultRpcProtocol 
+        }
+    
+        @Override
+        public <T> Exporter<T> export(Provider<T> provider, URL url) {
+           // TODO 调用父类  AbstractProtocol#export方法
+            return protocol.export(decorateWithFilter(provider, url), url);
+        }
+}
+
+```
+
+AbstractProtocol.java
+```java
+public abstract class AbstractProtocol implements Protocol {
+    protected ConcurrentHashMap<String, Exporter<?>> exporterMap = new ConcurrentHashMap<String, Exporter<?>>();
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T> Exporter<T> export(Provider<T> provider, URL url) {
+        String protocolKey = MotanFrameworkUtil.getProtocolKey(url);
+        synchronized (exporterMap) {
+            Exporter<T> exporter = (Exporter<T>) exporterMap.get(protocolKey);
+            // TODO  此处会回调子类    DefaultRpcProtocol#createExporter
+            exporter = createExporter(provider, url);
+            exporter.init();
+            exporterMap.put(protocolKey, exporter);
+            return exporter;
+        }
+    }
+
+    public <T> Referer<T> refer(Class<T> clz, URL url) {
+        // ...
+    }
+
+    @Override
+    public <T> Referer<T> refer(Class<T> clz, URL url, URL serviceUrl) {
+         // 略
+    }
+
+    protected abstract <T> Exporter<T> createExporter(Provider<T> provider, URL url);
+
+    protected abstract <T> Referer<T> createReferer(Class<T> clz, URL url, URL serviceUrl);
+   
+}
+
+```
+
+DefaultRpcProtocol.java
+
+```java
+
+@SpiMeta(name = "motan")
+public class DefaultRpcProtocol extends AbstractProtocol {
+
+    // 多个service可能在相同端口进行服务暴露，因此来自同个端口的请求需要进行路由以找到相应的服务，同时不在该端口暴露的服务不应该被找到
+    private Map<String, ProviderMessageRouter> ipPort2RequestRouter = new HashMap<String, ProviderMessageRouter>();
+
+    @Override
+    protected <T> Exporter<T> createExporter(Provider<T> provider, URL url) {
+        return new DefaultRpcExporter<T>(provider, url);
+    }
+
+    @Override // 实现父类 
+    protected <T> Referer<T> createReferer(Class<T> clz, URL url, URL serviceUrl) {
+        return new DefaultRpcReferer<T>(clz, url, serviceUrl);
+    }
+
+    /**
+     * rpc provider
+     * @author maijunsheng
+     */
+    class DefaultRpcExporter<T> extends AbstractExporter<T> {
+        private Server server;
+        private EndpointFactory endpointFactory;
+
+        public DefaultRpcExporter(Provider<T> provider, URL url) {
+            super(provider, url);
+            ProviderMessageRouter requestRouter = initRequestRouter(url);
+            endpointFactory =                    ExtensionLoader.getExtensionLoader(EndpointFactory.class).getExtension(
+                            url.getParameter(URLParamType.endpointFactory.getName(), URLParamType.endpointFactory.getValue()));
+            server = endpointFactory.createServer(url, requestRouter);
+        }
+
+        @Override
+        public void unexport() {
+            String protocolKey = MotanFrameworkUtil.getProtocolKey(url);
+            String ipPort = url.getServerPortStr();
+            Exporter<T> exporter = (Exporter<T>) exporterMap.remove(protocolKey);
+            if (exporter != null) {
+                exporter.destroy();
+            }
+            synchronized (ipPort2RequestRouter) {
+                ProviderMessageRouter requestRouter = ipPort2RequestRouter.get(ipPort);
+                if (requestRouter != null) {
+                    requestRouter.removeProvider(provider);
+                }
+            }
+        }
+
+        @Override
+        protected boolean doInit() {
+        }
+
+        @Override
+        public boolean isAvailable() {
+        }
+
+        @Override
+        public void destroy() {
+        }
+
+        private ProviderMessageRouter initRequestRouter(URL url) {
+            ProviderMessageRouter requestRouter = null;
+            String ipPort = url.getServerPortStr();
+
+            synchronized (ipPort2RequestRouter) {
+                requestRouter = ipPort2RequestRouter.get(ipPort);
+
+                if (requestRouter == null) {
+                    requestRouter = new ProviderProtectedMessageRouter(provider);
+                    ipPort2RequestRouter.put(ipPort, requestRouter);
+                } else {
+                    requestRouter.addProvider(provider);
+                }
+            }
+
+            return requestRouter;
+        }
+    }
+
+    /**
+     * rpc referer
+     * @param <T>
+     * @author maijunsheng
+     */
+    class DefaultRpcReferer<T> extends AbstractReferer<T> {
+        // TODO  先略去 
+    }
+}
+
+
+```
+
+1. ProtocolFilterDecorator(DefaultRpcProtocol proto)
+2. 调用 AbstractProtocol.export();
+3. export()回调子类 createExporter();
+4. 创建内部类 DefaultRpcExporter
+5. 完成exporter实现 
 
 ### 结束
 
