@@ -461,8 +461,8 @@ public class SimpleConfigHandler implements ConfigHandler {
     - 根据注册地址生成servcie url ？
        - StringTools.urlDecode(registryUrls.get(0).getParameter(URLParamType.embed.getName()));
        - 为什么取的是注册地址第一个呢？ ` registryUrls.get(0).getParameter(URLParamType.embed.getName());`
-   >  1. motan://192.168.1.1:8002/com.weibo.motan.demo.service.MotanDemoService?id=motan&export=motan:8002&protocol=motan&refreshTimestamp=1505801631928&group=motan-demo-rpc&nodeType=service&version=1.0&
-      2. String serviceStr =
+       >  1. motan://192.168.1.1:8002/com.weibo.motan.demo.service.MotanDemoService?id=motan&export=motan:8002&protocol=motan&refreshTimestamp=1505801631928&group=motan-demo-rpc&nodeType=service&version=1.0&
+          2. String serviceStr =
 2. 服务协议初步分析:类似于java 标准api  URL类的方式
    -  motan  表示用motan协议
    -  192.168.1.1:8002:  当前服务的ip:port
@@ -474,91 +474,81 @@ public class SimpleConfigHandler implements ConfigHandler {
 4. 根据第3的URL对象。通过SPI机制找到对应的 Protocol 实现类
    - String protocolName = serviceUrl.getParameter(URLParamType.protocol.getName(), URLParamType.protocol.getValue());
    - Protocol ss = ExtensionLoader.getExtensionLoader(Protocol.class).getExtension(protocolName);
-     > `  com.weibo.api.motan.protocol.rpc.DefaultRpcProtocol@33f724c7 `      
+       > `  com.weibo.api.motan.protocol.rpc.DefaultRpcProtocol@33f724c7 `      
    -  使用decorate模拟，增强Protocol功能，添加过滤器，后面我在分析 
-     > ` Protocol protocol = new ProtocolFilterDecorator(ss); `
+       > ` Protocol protocol = new ProtocolFilterDecorator(ss); `
    - 使用默认Provider实现来暴露服务 DefaultProvider ，此为将是service impl的调用就是一个invoke而已
-      > 1. `Provider<T> provider = new DefaultProvider<T>(ref, serviceUrl, interfaceClass); `
-      > 2. ` DefaultProvider 本质上是通过 invoke(request) 根据reqeust 来找到对应的method,反射调用方法，仅此而已`
+       > 1. `Provider<T> provider = new DefaultProvider<T>(ref, serviceUrl, interfaceClass); `
+       > 2. ` DefaultProvider 本质上是通过 invoke(request) 根据reqeust 来找到对应的method,反射调用方法，仅此而已`
    
    -- 如何将provider暴露 · Exporter<T> exporter = protocol.export(provider, serviceUrl);·
       
-    > 服务暴露成功，则将服务添加 到对应注册中心地址。先export 再register
+      > 服务暴露成功，则将服务添加 到对应注册中心地址。先export 再register
 
-5. DefaultProvider分析 代码比较简单 
+######  DefaultProvider 如何封装服务端调用：原理 
 
+1. 源代码
 
-   - 源代码
-   ```java
+```java
 
-   @SpiMeta(name = "motan")
-   public class DefaultProvider<T> extends AbstractProvider<T> {
-       protected T proxyImpl;
-   
-       // TODO SIimpleConfigHandler 中调用引构造器
-       public DefaultProvider(T proxyImpl, URL url, Class<T> clz) {
-           super(url, clz);
-           this.proxyImpl = proxyImpl;
-       }
-   
-       @Override
-       public T getImpl(){
-       	return proxyImpl;
-       }
-   
-       @Override
-       public Response invoke(Request request) {
-           DefaultResponse response = new DefaultResponse();
-           // TODO netty 接收客户端请求，从中解析出方法名
-           Method method = lookup(request);
-           if (method == null) {
-               MotanServiceException exception = ...
-               response.setException(exception);
-               return response;
-           }
-           try {
-               // TODO 因为defaultprovider中已经知道是这个接口实现类了，因此 只需要invoke即可完成
-               Object value = method.invoke(proxyImpl, request.getArguments());
-               response.setValue(value);
-           } catch (Exception e) {
-               //服务发生错误时，显示详细日志
-           } catch (Throwable t) {
-               // 如果服务发生Error，将Error转化为Exception，防止拖垮调用方         //对于Throwable,也记录日志
-               LoggerUtil.error("Exception caught when during method invocation. request:" + request.toString(), t);
-           }
-           // 传递rpc版本和attachment信息方便不同rpc版本的codec使用。
-           response.setRpcProtocolVersion(request.getRpcProtocolVersion());
-           response.setAttachments(request.getAttachments());
-           return response;
-       }
-   
+@SpiMeta(name = "motan")
+public class DefaultProvider<T> extends AbstractProvider<T> {
+   protected T proxyImpl;
+
+   // TODO SIimpleConfigHandler 中调用引构造器
+   public DefaultProvider(T proxyImpl, URL url, Class<T> clz) {
+       super(url, clz);
+       this.proxyImpl = proxyImpl;
    }
 
+   @Override
+   public T getImpl(){
+    return proxyImpl;
+   }
+
+   @Override
+   public Response invoke(Request request) {
+       DefaultResponse response = new DefaultResponse();
+       // TODO netty 接收客户端请求，从中解析出方法名
+       Method method = lookup(request);
+       if (method == null) {
+           MotanServiceException exception = ...
+           response.setException(exception);
+           return response;
+       }
+       try {
+           // TODO 因为defaultprovider中已经知道是这个接口实现类了，因此 只需要invoke即可完成
+           Object value = method.invoke(proxyImpl, request.getArguments());
+           response.setValue(value);
+       } catch (Exception e) {
+           //服务发生错误时，显示详细日志
+       } catch (Throwable t) {
+           // 如果服务发生Error，将Error转化为Exception，防止拖垮调用方         //对于Throwable,也记录日志
+           LoggerUtil.error("Exception caught when during method invocation. request:" + request.toString(), t);
+       }
+       // 传递rpc版本和attachment信息方便不同rpc版本的codec使用。
+       response.setRpcProtocolVersion(request.getRpcProtocolVersion());
+       response.setAttachments(request.getAttachments());
+       return response;
+   }
+
+}
+
 ```
-  
-  
-  
   
 
 ![ServiceConfig](DefaultProvider.png)
 
 
-#### 7. 结果
-+ Chrome中访问如下URL
-     
-	>http://channel.yhd.com/jd/api/channel/rankInfo?body={%22cateId%22:%22655%22,%22provinceId%22:%221%22,%22time%22:%221DAY%22,%22rankId%22:%22rank3001%22}&clientVersion=6.2.0&build=38335&client=apple&d_brand=Xiaomi&d_model=RedmiNote2&osVersion=5.0.2&screen=1920*1080&partner=test&uuid=869043021004155-fc64bab32c82&area=12_904_905_50601&networkType=wifi&pin=txjjzyzqbx
-     
-	
-+ 效果截图
-
-	![](img/ajax_response.jpg)
-
-
+######  DefaultRpcProtocol 如何暴露  DefaultProvider
+1. xxx
 
  
-    | JD URL  | YHD URL  |
-    | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
-    | http://rankcore.m.jd.local/rankInfo?body={%22cateId%22:%22655%22,%22provinceId%22:%221%22,%22time%22:%221DAY%22,%22rankId%22:%22rank3001%22}&clientVersion=6.2.0&build=38335&client=apple&d_brand=Xiaomi&d_model=RedmiNote2&osVersion=5.0.2&screen=1920*1080&partner=test&uuid=869043021004155-fc64bab32c82&area=12_904_905_50601&networkType=wifi&pin=txjjzyzqbx  | http://detail.yhd.com/jd/api/channel/rankInfo?body={%22cateId%22:%22655%22,%22provinceId%22:%221%22,%22time%22:%221DAY%22,%22rankId%22:%22rank3001%22}&clientVersion=6.2.0&build=38335&client=apple&d_brand=Xiaomi&d_model=RedmiNote2&osVersion=5.0.2&screen=1920*1080&partner=test&uuid=869043021004155-fc64bab32c82&area=12_904_905_50601&networkType=wifi&pin=txjjzyzqbx  |
-    | http://dynamic.item.jd.com/info/3846673.html  | http://detail.yhd.com/jd/api/detail/info/3846673.html  |
 
 ### 结束
+
+
+    |   URL  |   URL  |
+    | ------- | ---- |
+    | htt   |      ||  
+     
