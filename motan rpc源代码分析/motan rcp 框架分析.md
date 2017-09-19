@@ -199,7 +199,7 @@
 ### 从ServiceConfig.export()开始。
 #### 类图
   ![ServiceConfig](ServiceConfig.png)
-1. ServiceConfig主要逻辑：
+#####   ServiceConfig 主要逻辑：
 ```java
 
   
@@ -359,10 +359,12 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
  
 ```
 1.  无论是spring方式，还是api的方式，最终会调用export()方法
+***
 2.  loadRegistryUrls():返回注册中心地址，是一个list,打印出来后的结果如下：
     - []local://127.0.0.1:0/com.weibo.api.motan.registry.RegistryService?group=default_rpc]
     - AbstractInterfaceConfig#loadRegistryUrls 用于收集,serviceconfig中设置的注册中心信息
-   > motanDemoService.setRegistry(zookeeperRegistry);
+    > motanDemoService.setRegistry(zookeeperRegistry);
+***
 3. 执行 ` ServiceConfig#doExport() ` 方法 
    1. 根据一系统 参数构造一个服务 service URL,请注意（motan中有register url ,servcieurl）
       > URL serviceUrl = new URL(protocolName, hostAddress, port, interfaceClass.getName(), map);
@@ -375,35 +377,171 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
  
  
  
- 
- 
- 
+#####  SimpleConfigHandler 执行服务暴露
 
-#### 4. 启动nginx
+  ![SimpleConfigHandler](SimpleConfigHandler.png)
 
-执行命令： (重启 ，启动)
-+ `nginx -s reload`
-+  `nginx.exe`
+```java
 
-#### 5. jd url与yhd代理url对应关系如下　
->请注意加精部分  /jd/api/  为yhd固定代码url前缀
-  
-+ jd域名：  http://rankcore.m.jd.local/rankInfo?
-   +   {host}:/{**jd_path**}
-   
-+ 构造yhd代理域名
-    + http://detail.yhd.com/jd/api/rankInfo
-    + 代理域名path部分规则
-	  + {host}:**/jd/ap**i/{**jd_path**}
+@SpiMeta(name = MotanConstants.DEFAULT_VALUE)
+public class SimpleConfigHandler implements ConfigHandler {
 
+    @Override
+    public <T> ClusterSupport<T> buildClusterSupport(Class<T> interfaceClass, List<URL> registryUrls) {
+        ClusterSupport<T> clusterSupport = new ClusterSupport<T>(interfaceClass, registryUrls);
+        clusterSupport.init();
+        return clusterSupport;
+    }
 
-#### 6. AJAX请求改造 codes
+    @Override
+    public <T> T refer(Class<T> interfaceClass, List<Cluster<T>> clusters, String proxyType) {
+        ProxyFactory proxyFactory = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getExtension(proxyType);
+        return proxyFactory.getProxy(interfaceClass, new RefererInvocationHandler<T>(interfaceClass, clusters));
+    }
 
-```html
+    @Override
+    public <T> Exporter<T> export(Class<T> interfaceClass, T ref, List<URL> registryUrls) {
+        // motan://10.14.162.137:8002/com.weibo.motan.demo.service.MotanDemoService?id=motan&export=motan:8002&protocol=motan&refreshTimestamp=1505801631928&group=motan-demo-rpc&nodeType=service&version=1.0&
+        String serviceStr = StringTools.urlDecode(registryUrls.get(0).getParameter(URLParamType.embed.getName()));
+        System.out.println("5 SimpleConfigHandler export serviceStr ==>" +serviceStr);
 
+        URL serviceUrl = URL.valueOf(serviceStr);
+        // export service
+        // 利用protocol decorator来增加filter特性
+        String protocolName = serviceUrl.getParameter(URLParamType.protocol.getName(), URLParamType.protocol.getValue());
+        Protocol ss = ExtensionLoader.getExtensionLoader(Protocol.class).getExtension(protocolName);
+        Protocol protocol = new ProtocolFilterDecorator(ss);
 
-   
+        // com.weibo.api.motan.protocol.rpc.DefaultRpcProtocol@33f724c7
+        System.out.println(" 11 default Protocol ==> " + ss);
+        Provider<T> provider = new DefaultProvider<T>(ref, serviceUrl, interfaceClass);
+        Exporter<T> exporter = protocol.export(provider, serviceUrl);
+        // register service
+        register(registryUrls, serviceUrl);
+
+        return exporter;
+    }
+
+    @Override
+    public <T> void unexport(List<Exporter<T>> exporters, Collection<URL> registryUrls) {
+         /....
+    }
+
+    private void register(List<URL> registryUrls, URL serviceUrl) {
+
+        for (URL url : registryUrls) {
+            // 根据check参数的设置，register失败可能会抛异常，上层应该知晓
+            RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getExtension(url.getProtocol());
+            if (registryFactory == null) {
+                throw  new  Excepiton(..);
+            }
+            Registry registry = registryFactory.getRegistry(url);
+            registry.register(serviceUrl);
+        }
+    }
+
+    private void unRegister(Collection<URL> registryUrls) {
+        for (URL url : registryUrls) {
+                 // 不管check的设置如何，做完所有unregistry，做好清理工作
+                String serviceStr = StringTools.urlDecode(url.getParameter(URLParamType.embed.getName()));
+                URL serviceUrl = URL.valueOf(serviceStr);
+                RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getExtension(url.getProtocol());
+                Registry registry = registryFactory.getRegistry(url);
+                registry.unregister(serviceUrl);
+            
+        }
+    }
+
+}
+
 ```
+
+###### SimpleConfigHandler#export()方法执行服务暴露(refer方法是客户端使用，暂时不讨论)
+1.  motan服务协议的是怎么样的？
+    - 根据注册地址生成servcie url ？
+       - StringTools.urlDecode(registryUrls.get(0).getParameter(URLParamType.embed.getName()));
+       - 为什么取的是注册地址第一个呢？ ` registryUrls.get(0).getParameter(URLParamType.embed.getName());`
+   >  1. motan://192.168.1.1:8002/com.weibo.motan.demo.service.MotanDemoService?id=motan&export=motan:8002&protocol=motan&refreshTimestamp=1505801631928&group=motan-demo-rpc&nodeType=service&version=1.0&
+      2. String serviceStr =
+2. 服务协议初步分析:类似于java 标准api  URL类的方式
+   -  motan  表示用motan协议
+   -  192.168.1.1:8002:  当前服务的ip:port
+   -  com.weibo.motan.demo.service.MotanDemoService :接口名
+   -  ？号后面是参数，包括timestamp id version,group 等信息
+3. 将 Service url字符串转换成 motan URL对象
+   -  ` URL serviceUrl = URL.valueOf(serviceStr);`
+
+4. 根据第3的URL对象。通过SPI机制找到对应的 Protocol 实现类
+   - String protocolName = serviceUrl.getParameter(URLParamType.protocol.getName(), URLParamType.protocol.getValue());
+   - Protocol ss = ExtensionLoader.getExtensionLoader(Protocol.class).getExtension(protocolName);
+     > `  com.weibo.api.motan.protocol.rpc.DefaultRpcProtocol@33f724c7 `      
+   -  使用decorate模拟，增强Protocol功能，添加过滤器，后面我在分析 
+     > ` Protocol protocol = new ProtocolFilterDecorator(ss); `
+   - 使用默认Provider实现来暴露服务 DefaultProvider ，此为将是service impl的调用就是一个invoke而已
+      > 1. `Provider<T> provider = new DefaultProvider<T>(ref, serviceUrl, interfaceClass); `
+      > 2. ` DefaultProvider 本质上是通过 invoke(request) 根据reqeust 来找到对应的method,反射调用方法，仅此而已`
+   
+   -- 如何将provider暴露 · Exporter<T> exporter = protocol.export(provider, serviceUrl);·
+      
+    > 服务暴露成功，则将服务添加 到对应注册中心地址。先export 再register
+
+5. DefaultProvider分析 代码比较简单 
+
+
+   - 源代码
+   ```java
+
+   @SpiMeta(name = "motan")
+   public class DefaultProvider<T> extends AbstractProvider<T> {
+       protected T proxyImpl;
+   
+       // TODO SIimpleConfigHandler 中调用引构造器
+       public DefaultProvider(T proxyImpl, URL url, Class<T> clz) {
+           super(url, clz);
+           this.proxyImpl = proxyImpl;
+       }
+   
+       @Override
+       public T getImpl(){
+       	return proxyImpl;
+       }
+   
+       @Override
+       public Response invoke(Request request) {
+           DefaultResponse response = new DefaultResponse();
+           // TODO netty 接收客户端请求，从中解析出方法名
+           Method method = lookup(request);
+           if (method == null) {
+               MotanServiceException exception = ...
+               response.setException(exception);
+               return response;
+           }
+           try {
+               // TODO 因为defaultprovider中已经知道是这个接口实现类了，因此 只需要invoke即可完成
+               Object value = method.invoke(proxyImpl, request.getArguments());
+               response.setValue(value);
+           } catch (Exception e) {
+               //服务发生错误时，显示详细日志
+           } catch (Throwable t) {
+               // 如果服务发生Error，将Error转化为Exception，防止拖垮调用方         //对于Throwable,也记录日志
+               LoggerUtil.error("Exception caught when during method invocation. request:" + request.toString(), t);
+           }
+           // 传递rpc版本和attachment信息方便不同rpc版本的codec使用。
+           response.setRpcProtocolVersion(request.getRpcProtocolVersion());
+           response.setAttachments(request.getAttachments());
+           return response;
+       }
+   
+   }
+
+```
+  
+  
+  
+  
+
+![ServiceConfig](DefaultProvider.png)
+
 
 #### 7. 结果
 + Chrome中访问如下URL
