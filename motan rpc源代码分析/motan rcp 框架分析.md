@@ -19,7 +19,7 @@
   ![Motan](http://n.sinaimg.cn/tech/transform/20160510/V2ql-fxryhhh1870084.jpg)
 
 # 3 RPC框架要重点核心点 
-## 推荐[从motan看RPC框架实现](http://kriszhang.com/motan-rpc-impl/)
+##### 推荐[从motan看RPC框架实现](http://kriszhang.com/motan-rpc-impl/)
 ## 核心内容  
    1. 如何与Spring做集成？
    2. SPI机制的实现原理是什么？为什么要用这个？
