@@ -572,6 +572,7 @@ public abstract class AbstractProtocol implements Protocol {
             Exporter<T> exporter = (Exporter<T>) exporterMap.get(protocolKey);
             // TODO  此处会回调子类    DefaultRpcProtocol#createExporter
             exporter = createExporter(provider, url);
+            // TODO 回调 AbstractNode#init()
             exporter.init();
             exporterMap.put(protocolKey, exporter);
             return exporter;
@@ -588,9 +589,7 @@ public abstract class AbstractProtocol implements Protocol {
     }
 
     protected abstract <T> Exporter<T> createExporter(Provider<T> provider, URL url);
-
     protected abstract <T> Referer<T> createReferer(Class<T> clz, URL url, URL serviceUrl);
-   
 }
 
 ```
@@ -615,10 +614,6 @@ public class DefaultRpcProtocol extends AbstractProtocol {
         return new DefaultRpcReferer<T>(clz, url, serviceUrl);
     }
 
-    /**
-     * rpc provider
-     * @author maijunsheng
-     */
     class DefaultRpcExporter<T> extends AbstractExporter<T> {
         private Server server;
         private EndpointFactory endpointFactory;
@@ -648,24 +643,13 @@ public class DefaultRpcProtocol extends AbstractProtocol {
         }
 
         @Override
-        protected boolean doInit() {
-        }
-
-        @Override
-        public boolean isAvailable() {
-        }
-
-        @Override
-        public void destroy() {
-        }
+        protected boolean doInit() {   server.open();  }
 
         private ProviderMessageRouter initRequestRouter(URL url) {
             ProviderMessageRouter requestRouter = null;
             String ipPort = url.getServerPortStr();
-
             synchronized (ipPort2RequestRouter) {
                 requestRouter = ipPort2RequestRouter.get(ipPort);
-
                 if (requestRouter == null) {
                     requestRouter = new ProviderProtectedMessageRouter(provider);
                     ipPort2RequestRouter.put(ipPort, requestRouter);
@@ -673,16 +657,10 @@ public class DefaultRpcProtocol extends AbstractProtocol {
                     requestRouter.addProvider(provider);
                 }
             }
-
             return requestRouter;
         }
     }
 
-    /**
-     * rpc referer
-     * @param <T>
-     * @author maijunsheng
-     */
     class DefaultRpcReferer<T> extends AbstractReferer<T> {
         // TODO  先略去 
     }
@@ -691,13 +669,440 @@ public class DefaultRpcProtocol extends AbstractProtocol {
 
 ```
 
+
 1. ProtocolFilterDecorator(DefaultRpcProtocol proto)
 2. 调用 AbstractProtocol.export();
 3. export()回调子类 createExporter();
 4. 创建内部类 DefaultRpcExporter
 5. 完成exporter实现 
 
-### 结束
+  ![DefaultRpcExporter](DefaultRpcExporter.png)
+######  DefaultRpcExporter 是如何 暴露的
+#######  DefaultRpcExporter.java
+
+```java
+class DefaultRpcExporter<T> extends AbstractExporter<T> {
+    private Server server;
+    private EndpointFactory endpointFactory;
+
+    public DefaultRpcExporter(Provider<T> provider, URL url) {
+        // TODO 1 调用父类  AbstractExporter
+        super(provider, url);
+        // TODO 2 requestRouter 其作用是将 request 映射到provider上
+        ProviderMessageRouter requestRouter = initRequestRouter(url);
+       // TODO  3 通过SPI找到 endpoint ,相当于底层传输层实现，
+        endpointFactory =   ExtensionLoader.getExtensionLoader(EndpointFactory.class).getExtension(
+                        url.getParameter(URLParamType.endpointFactory.getName(), URLParamType.endpointFactory.getValue()));
+        // TODO 4 根据endpointfactory创建服务器，Server是一个接口，默认实现是NettyServer.java后面专门会分析
+        server = endpointFactory.createServer(url, requestRouter);
+    }
+}
+```
+```java
+public abstract class AbstractNode implements Node {
+    @Override
+    public synchronized void init() {
+        if (init) {
+            return;
+        }
+        boolean result = doInit();
+    }
+    // TODO DefaultRpcExporter会实现此方法
+    protected abstract boolean doInit();
+}
+```
+
+1. 整体调用链
+- --> ProtocolFilterDecorator#export()
+    - --> AbstractProtocol#export() 
+      - --> 1. exporter = abstract createExporter(provider, url)
+        - --> `DefaultRpcProtocol#createExporter()` 回调子类的createExporter
+      - <-- 2. exporter.init() 父类继续调用 exporter 的init方法
+        - -->  AbstractNode#init();
+          - -->  DefaultRpcExporter#doInit(); 做真实的doInit打开 
+          - -->  打开服务端server server.open()
+      - <-- server 的初始化完成
+ 
+2. endpointFactory.createServer(url, requestRouter)是什么?
+> 1. 实现类是 ` NettyEndpointFactory`
+> 2. 父类会回调 此类的 `innerCreateClient() `方法实例化` NettyServer `对象
+
+```java
+@SpiMeta(name = "motan")
+public class NettyEndpointFactory extends AbstractEndpointFactory {
+	@Override
+	protected Server innerCreateServer(URL url, MessageHandler messageHandler) {
+		return new NettyServer(url, messageHandler);
+	}
+
+   //  TODO 此处会被你类回调 
+	@Override
+	protected Client innerCreateClient(URL url) {
+		return new NettyClient(url);
+	}
+}
+
+```
+
+
+```java
+
+public abstract class AbstractEndpointFactory implements EndpointFactory {
+
+    /** 维持share channel 的service列表 **/
+    protected Map<String, Server> ipPort2ServerShareChannel = new HashMap<String, Server>();
+    protected ConcurrentMap<Server, Set<String>> server2UrlsShareChannel = new ConcurrentHashMap<Server, Set<String>>();
+    private EndpointManager heartbeatClientEndpointManager = null;
+
+    public AbstractEndpointFactory() {
+        heartbeatClientEndpointManager = new HeartbeatClientEndpointManager();
+        heartbeatClientEndpointManager.init();
+    }
+
+    @Override
+    public Server createServer(URL url, MessageHandler messageHandler) {
+        HeartbeatFactory heartbeatFactory = getHeartbeatFactory(url);
+        messageHandler = heartbeatFactory.wrapMessageHandler(messageHandler);
+        synchronized (ipPort2ServerShareChannel) {
+            String ipPort = url.getServerPortStr();
+            System.out.println("createServer "+ipPort);
+            String protocolKey = MotanFrameworkUtil.getProtocolKey(url);
+            boolean shareChannel = url.getBooleanParameter(URLParamType.shareChannel.getName(), URLParamType.shareChannel.getBooleanValue());
+            if (!shareChannel) { // 独享一个端口
+                // 如果端口已经被使用了，使用该server bind 会有异常
+                return innerCreateServer(url, messageHandler);
+            }
+            Server server = ipPort2ServerShareChannel.get(ipPort);
+            if (server != null) {
+                // can't share service channel
+                if (!MotanFrameworkUtil.checkIfCanShallServiceChannel(server.getUrl(), url)) {
+                }
+                saveEndpoint2Urls(server2UrlsShareChannel, server, protocolKey);
+                return server;
+            }
+
+            url = url.createCopy();
+            url.setPath(""); // 共享server端口，由于有多个interfaces存在，所以把path设置为空
+            // TODO  回调 NettyEndpointFactory# innerCreateServer
+            server = innerCreateServer(url, messageHandler);
+            ipPort2ServerShareChannel.put(ipPort, server);
+            saveEndpoint2Urls(server2UrlsShareChannel, server, protocolKey);
+            return server;
+        }
+    }
+
+    @Override
+    public Client createClient(URL url) {
+        return createClient(url, heartbeatClientEndpointManager);
+    }
+
+    @Override
+    public void safeReleaseResource(Server server, URL url) {
+        safeReleaseResource(server, url, ipPort2ServerShareChannel, server2UrlsShareChannel);
+    }
+
+    @Override
+    public void safeReleaseResource(Client client, URL url) { }
+
+    private <T extends Endpoint> void safeReleaseResource(T endpoint, URL url, Map<String, T> ipPort2Endpoint,ConcurrentMap<T, Set<String>> endpoint2Urls) {
+    }
+
+    private <T> void saveEndpoint2Urls(ConcurrentMap<T, Set<String>> map, T endpoint, String namespace) { }
+
+    private HeartbeatFactory getHeartbeatFactory(URL url) {}
+
+    private Client createClient(URL url, EndpointManager endpointManager) {
+        Client client = innerCreateClient(url);
+        endpointManager.addEndpoint(client);
+        return client;
+    }
+    protected abstract Server innerCreateServer(URL url, MessageHandler messageHandler);
+    protected abstract Client innerCreateClient(URL url);
+
+}
+```
+  ![NettyEndpointFactory](NettyEndpointFactory.png)
+  
+1. createServer最终会返回一个` new NettyServer(url, messageHandler); `对象
+
+```java
+
+public class NettyServer extends AbstractServer implements StatisticCallback {
+	// default io thread is Runtime.getRuntime().availableProcessors() * 2
+	private final static ChannelFactory channelFactory = new NioServerSocketChannelFactory(
+			Executors.newCachedThreadPool(new DefaultThreadFactory("nettyServerBoss", true)),
+			Executors.newCachedThreadPool(new DefaultThreadFactory("nettyServerWorker", true)));
+
+	// 单端口需要对应单executor 1) 为了更好的隔离性 2) 为了防止被动releaseExternalResources:
+	private StandardThreadExecutor standardThreadExecutor = null;
+	
+	protected NettyServerChannelManage channelManage = null;
+	private org.jboss.netty.channel.Channel serverChannel;
+	private ServerBootstrap bootstrap;
+	private MessageHandler messageHandler;
+
+	public NettyServer(URL url, MessageHandler messageHandler) {
+	    // TODO  调用父类构造器，初始化 encode ,decode 
+		super(url);
+		/** T
+		    public AbstractServer(URL url) {
+                this.url = url;
+                this.codec =
+                        ExtensionLoader.getExtensionLoader(Codec.class).getExtension(
+                                url.getParameter(URLParamType.codec.getName(), URLParamType.codec.getValue()));
+            }
+        */
+		this.messageHandler = messageHandler;
+	}
+
+	@Override
+	public Response request(Request request) throws TransportException {
+		throw new MotanFrameworkException("NettyServer request(Request request) method unsupport: url: " + url);
+	}
+
+	@Override
+	public synchronized boolean open() {
+		if (isAvailable()) {
+			return true;
+		}
+
+		initServerBootstrap();
+
+		serverChannel = bootstrap.bind(new InetSocketAddress(url.getPort()));
+		state = ChannelState.ALIVE;
+
+		StatsUtil.registryStatisticCallback(this);
+		LoggerUtil.info("NettyServer ServerChannel finish Open: url=" + url);
+
+		return state.isAliveState();
+	}
+
+	private synchronized void initServerBootstrap() {
+		boolean shareChannel = url.getBooleanParameter(URLParamType.shareChannel.getName(),
+				URLParamType.shareChannel.getBooleanValue());
+		final int maxContentLength = url.getIntParameter(URLParamType.maxContentLength.getName(),
+				URLParamType.maxContentLength.getIntValue());
+		int maxServerConnection = url.getIntParameter(URLParamType.maxServerConnection.getName(),
+				URLParamType.maxServerConnection.getIntValue());
+		int workerQueueSize = url.getIntParameter(URLParamType.workerQueueSize.getName(),
+				URLParamType.workerQueueSize.getIntValue());
+
+		int minWorkerThread = 0, maxWorkerThread = 0;
+
+		if (shareChannel) {
+			minWorkerThread = url.getIntParameter(URLParamType.minWorkerThread.getName(),
+					MotanConstants.NETTY_SHARECHANNEL_MIN_WORKDER);
+			maxWorkerThread = url.getIntParameter(URLParamType.maxWorkerThread.getName(),
+					MotanConstants.NETTY_SHARECHANNEL_MAX_WORKDER);
+		} else {
+			minWorkerThread = url.getIntParameter(URLParamType.minWorkerThread.getName(),
+					MotanConstants.NETTY_NOT_SHARECHANNEL_MIN_WORKDER);
+			maxWorkerThread = url.getIntParameter(URLParamType.maxWorkerThread.getName(),
+					MotanConstants.NETTY_NOT_SHARECHANNEL_MAX_WORKDER);
+		}
+
+		
+		standardThreadExecutor = (standardThreadExecutor != null && !standardThreadExecutor.isShutdown()) ? standardThreadExecutor
+				: new StandardThreadExecutor(minWorkerThread, maxWorkerThread, workerQueueSize,
+						new DefaultThreadFactory("NettyServer-" + url.getServerPortStr(), true));
+		standardThreadExecutor.prestartAllCoreThreads();
+
+		// 连接数的管理，进行最大连接数的限制 
+		channelManage = new NettyServerChannelManage(maxServerConnection);
+
+		bootstrap = new ServerBootstrap(channelFactory);
+		bootstrap.setOption("child.tcpNoDelay", true);
+		bootstrap.setOption("child.keepAlive", true);
+
+		final NettyChannelHandler handler = new NettyChannelHandler(NettyServer.this, messageHandler,
+				standardThreadExecutor);
+
+		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
+        			// FrameDecoder非线程安全，每个连接一个 Pipeline
+        			public ChannelPipeline getPipeline() {
+        				ChannelPipeline pipeline = Channels.pipeline();
+        				pipeline.addLast("channel_manage", channelManage);
+        				pipeline.addLast("decoder", new NettyDecoder(codec, NettyServer.this, maxContentLength));
+        				pipeline.addLast("encoder", new NettyEncoder(codec, NettyServer.this));
+        				pipeline.addLast("handler", handler);
+        				return pipeline;
+        			}
+        });
+	}
+
+	@Override
+	public synchronized void close() {
+		close(0);
+	}
+
+	@Override
+	public synchronized void close(int timeout) {
+		if (state.isCloseState()) {
+			LoggerUtil.info("NettyServer close fail: already close, url={}", url.getUri());
+			return;
+		}
+		if (state.isUnInitState()) {
+			return;
+		}
+		try {
+			// close listen socket
+			serverChannel.close();
+			// close all clients's channel
+			channelManage.close();
+			// shutdown the threadPool
+			standardThreadExecutor.shutdownNow();
+			// 设置close状态
+			state = ChannelState.CLOSE;
+			// 取消统计回调的注册
+			StatsUtil.unRegistryStatisticCallback(this);
+		} catch (Exception e) {
+		}
+	}
+
+	/**
+	 * 统计回调接口
+	 */
+	@Override
+	public String statisticCallback() {
+		return String.format(
+				"identity: %s connectionCount: %s taskCount: %s queueCount: %s maxThreadCount: %s maxTaskCount: %s",
+				url.getIdentity(), channelManage.getChannels().size(), standardThreadExecutor.getSubmittedTasksCount(),
+				standardThreadExecutor.getQueue().size(), standardThreadExecutor.getMaximumPoolSize(),
+				standardThreadExecutor.getMaxSubmittedTaskCount());
+	}
+
+	/**
+	 * 是否已经绑定端口
+	 */
+	@Override
+	public boolean isBound() {
+		return serverChannel != null && serverChannel.isBound();
+	}
+}
+
+```
+
+1. NettyServer.open()做了什么？ 创建了一个netty server ，监听 指定商品。
+   - 设置 ip port 
+   - 在pipeline中增加channel factory 
+   - 增加编码，解码器 codes :后面分析 
+   - 注册业务handler : NettyChannelHandler
+     > pipeline.addLast("handler", handler);
+     
+2. NettyChannelHandler 的逻辑是什么？
+
+  ![NettyChannelHandler](NettyChannelHandler.png)
+ 
+继承了Netty包中的 SimpleChannelHandler 复写父类的三个方法
++ channelConnected 
++ channelDisconnected
++ messageReceived(ChannelHandlerContext ctx, MessageEvent e) 主要处理逻辑
++ 主要逻辑：
+  - 判断e事件类型motan定义的  Request  ==>  processRequest(ctx, e);
+  - 判断e事件类型motan定义的  Response ==>  processResponse(ctx, e);
+  - 对于 server来说  Request 主要来自于client的请求 
+
++ processRequest 逻辑如下：
+  - 每一个request会被封装成一个Runnable作为task 供线程池处理
+    -  threadPoolExecutor.execute(new Runnable() { 
+          processRequest(ChannelHandlerContext ctx, Request request, long processStartTime) {
+       }
+    - processRequest(ChannelHandlerContext ctx, Request request, long processStartTime)实现关键的罗中
+      >` Object result = messageHandler.handle(serverChannel, request);`
+    - 获取 service imp的方法调用结果，将结果写入netty 通道。
++ messageHandler 是什么？作用
+  - 对于每一个request请求，服务端需要路由找到对应的接口实现方法，然后invoke得到结果
+  - messageHandler从如果来的  DefaultRpcExporter 的构造函数创建，通过encpoint factory方法传递进来的
+  
+     
+  
+```java
+public class NettyChannelHandler extends SimpleChannelHandler {
+	private ThreadPoolExecutor threadPoolExecutor;
+	private MessageHandler messageHandler;
+	private Channel serverChannel;
+
+	public NettyChannelHandler(Channel serverChannel, MessageHandler messageHandler,
+			ThreadPoolExecutor threadPoolExecutor) {
+		this.serverChannel = serverChannel;
+		this.messageHandler = messageHandler;
+		this.threadPoolExecutor = threadPoolExecutor;
+	}
+
+	@Override
+	public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+	}
+
+	@Override
+	public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+	}
+
+	@Override
+	public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+		Object message = e.getMessage();
+
+		if (message instanceof Request) {
+			processRequest(ctx, e);
+		} else if (message instanceof Response) {
+			processResponse(ctx, e);
+		} else {
+			throw new  Exception();
+		}
+	}
+
+	/**
+	 * <pre>
+	 *  request process: 主要来自于client的请求，需要使用threadPoolExecutor进行处理，避免service message处理比较慢导致iothread被阻塞
+	 * </pre>
+	 */
+	private void processRequest(final ChannelHandlerContext ctx, MessageEvent e) {
+		final Request request = (Request) e.getMessage();
+		request.setAttachment(URLParamType.host.getName(), NetUtils.getHostName(ctx.getChannel().getRemoteAddress()));
+		final long processStartTime = System.currentTimeMillis();
+		// 使用线程池方式处理
+		try {
+			threadPoolExecutor.execute(new Runnable() {
+				@Override
+                public void run() {
+				    try{
+				        RpcContext.init(request);
+						System.out.println("ctx instance ==>" +ctx.toString());
+	                    processRequest(ctx, request, processStartTime);
+				    }finally{
+				        RpcContext.destroy();
+				    }
+                }
+            });
+		} catch (RejectedExecutionException rejectException) {
+		}
+	}
+
+	private void processRequest(ChannelHandlerContext ctx, Request request, long processStartTime) {
+		Object result = messageHandler.handle(serverChannel, request);
+		DefaultResponse response = null;
+		if (!(result instanceof DefaultResponse)) {
+			response = new DefaultResponse(result);
+		} else {
+			response = (DefaultResponse) result;
+		}
+		response.setRequestId(request.getRequestId());
+		response.setProcessTime(System.currentTimeMillis() - processStartTime);
+		if (ctx.getChannel().isConnected()) {
+			ctx.getChannel().write(response);
+		}
+	}
+
+	private void processResponse(ChannelHandlerContext ctx, MessageEvent e) {
+		messageHandler.handle(serverChannel, e.getMessage());
+	}
+
+	@Override
+	public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
+		ctx.getChannel().close();
+	}
+}
+
+```
 
 
     |   URL  |   URL  |
