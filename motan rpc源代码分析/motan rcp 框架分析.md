@@ -234,7 +234,6 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         }
         // [1]
         checkInterfaceAndMethods(interfaceClass, methods);
-
         // [2]  AbstractInterfaceConfig#loadRegistryUrls  父类的方法来收集
         List<URL> registryUrls = loadRegistryUrls();
         if (registryUrls == null || registryUrls.size() == 0) {
@@ -313,13 +312,11 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             u.addParameter(URLParamType.embed.getName(), StringTools.urlEncode(serviceUrl.toFullStr()));
             registereUrls.add(u.createCopy());
         }
-        
         // [local://127.0.0.1:0/com.weibo.api.motan.registry.RegistryService?group=default_rpc]
         System.out.println(" 8 registereUrls ==>" +registereUrls);
         ConfigHandler configHandler = ExtensionLoader.getExtensionLoader(ConfigHandler.class).getExtension(MotanConstants.DEFAULT_VALUE);
         // ~ [5]  ConfigHandler 如何加载 ~
         exporters.add(configHandler.export(interfaceClass, ref, urls));
-
         initLocalAppInfo(serviceUrl);
     }
 
@@ -343,10 +340,6 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     @ConfigDesc(excluded = true)
     public BasicServiceInterfaceConfig getBasicService() {
         return basicService;
-    }
-
-    public void setBasicService(BasicServiceInterfaceConfig basicService) {
-        this.basicService = basicService;
     }
 
     public Map<String, Integer> getProtocolAndPort() {
@@ -413,7 +406,7 @@ public class SimpleConfigHandler implements ConfigHandler {
         Protocol ss = ExtensionLoader.getExtensionLoader(Protocol.class).getExtension(protocolName);
         Protocol protocol = new ProtocolFilterDecorator(ss);
 
-        // com.weibo.api.motan.protocol.rpc.DefaultRpcProtocol@33f724c7
+        //    com.weibo.api.motan.protocol.rpc.DefaultRpcProtocol@33f724c7
         System.out.println(" 11 default Protocol ==> " + ss);
         Provider<T> provider = new DefaultProvider<T>(ref, serviceUrl, interfaceClass);
         Exporter<T> exporter = protocol.export(provider, serviceUrl);
@@ -423,13 +416,7 @@ public class SimpleConfigHandler implements ConfigHandler {
         return exporter;
     }
 
-    @Override
-    public <T> void unexport(List<Exporter<T>> exporters, Collection<URL> registryUrls) {
-         /....
-    }
-
     private void register(List<URL> registryUrls, URL serviceUrl) {
-
         for (URL url : registryUrls) {
             // 根据check参数的设置，register失败可能会抛异常，上层应该知晓
             RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getExtension(url.getProtocol());
@@ -503,9 +490,7 @@ public class DefaultProvider<T> extends AbstractProvider<T> {
    }
 
    @Override
-   public T getImpl(){
-    return proxyImpl;
-   }
+   public T getImpl(){   return proxyImpl;  }
 
    @Override
    public Response invoke(Request request) {
@@ -513,19 +498,15 @@ public class DefaultProvider<T> extends AbstractProvider<T> {
        // TODO netty 接收客户端请求，从中解析出方法名
        Method method = lookup(request);
        if (method == null) {
-           MotanServiceException exception = ...
-           response.setException(exception);
-           return response;
+           // ... return ;
        }
        try {
            // TODO 因为defaultprovider中已经知道是这个接口实现类了，因此 只需要invoke即可完成
            Object value = method.invoke(proxyImpl, request.getArguments());
            response.setValue(value);
-       } catch (Exception e) {
-           //服务发生错误时，显示详细日志
+       } catch (Exception e) {/服务发生错误时，显示详细日志
        } catch (Throwable t) {
            // 如果服务发生Error，将Error转化为Exception，防止拖垮调用方         //对于Throwable,也记录日志
-           LoggerUtil.error("Exception caught when during method invocation. request:" + request.toString(), t);
        }
        // 传递rpc版本和attachment信息方便不同rpc版本的codec使用。
        response.setRpcProtocolVersion(request.getRpcProtocolVersion());
@@ -547,7 +528,6 @@ public class ProtocolFilterDecorator implements Protocol {
        public ProtocolFilterDecorator(Protocol protocol) {
             this.protocol = protocol; ///  TODO  默认使用  DefaultRpcProtocol 
         }
-    
         @Override
         public <T> Exporter<T> export(Provider<T> provider, URL url) {
            // TODO 调用父类  AbstractProtocol#export方法
@@ -577,13 +557,10 @@ public abstract class AbstractProtocol implements Protocol {
         }
     }
 
-    public <T> Referer<T> refer(Class<T> clz, URL url) {
-        // ...
-    }
+    public <T> Referer<T> refer(Class<T> clz, URL url) {  }
 
     @Override
-    public <T> Referer<T> refer(Class<T> clz, URL url, URL serviceUrl) {
-         // 略
+    public <T> Referer<T> refer(Class<T> clz, URL url, URL serviceUrl) {   // 略
     }
 
     protected abstract <T> Exporter<T> createExporter(Provider<T> provider, URL url);
@@ -615,11 +592,11 @@ public class DefaultRpcProtocol extends AbstractProtocol {
     class DefaultRpcExporter<T> extends AbstractExporter<T> {
         private Server server;
         private EndpointFactory endpointFactory;
-
+        // TODO SPI 查找 endpointFactory ，用此创建 server  
         public DefaultRpcExporter(Provider<T> provider, URL url) {
             super(provider, url);
             ProviderMessageRouter requestRouter = initRequestRouter(url);
-            endpointFactory =                    ExtensionLoader.getExtensionLoader(EndpointFactory.class).getExtension(
+            endpointFactory =  ExtensionLoader.getExtensionLoader(EndpointFactory.class).getExtension(
                             url.getParameter(URLParamType.endpointFactory.getName(), URLParamType.endpointFactory.getValue()));
             server = endpointFactory.createServer(url, requestRouter);
         }
@@ -646,7 +623,7 @@ public class DefaultRpcProtocol extends AbstractProtocol {
         private ProviderMessageRouter initRequestRouter(URL url) {
             ProviderMessageRouter requestRouter = null;
             String ipPort = url.getServerPortStr();
-            synchronized (ipPort2RequestRouter) {
+            synchronized (ipPort2RequestRouter) { //  TODO此处后面再分析 
                 requestRouter = ipPort2RequestRouter.get(ipPort);
                 if (requestRouter == null) {
                     requestRouter = new ProviderProtectedMessageRouter(provider);
@@ -699,9 +676,7 @@ class DefaultRpcExporter<T> extends AbstractExporter<T> {
 public abstract class AbstractNode implements Node {
     @Override
     public synchronized void init() {
-        if (init) {
-            return;
-        }
+        if (init) {    return;    }
         boolean result = doInit();
     }
     // TODO DefaultRpcExporter会实现此方法
@@ -752,6 +727,7 @@ public abstract class AbstractEndpointFactory implements EndpointFactory {
     private EndpointManager heartbeatClientEndpointManager = null;
 
     public AbstractEndpointFactory() {
+        // TODO  服务端Hheartbeat 
         heartbeatClientEndpointManager = new HeartbeatClientEndpointManager();
         heartbeatClientEndpointManager.init();
     }
@@ -875,38 +851,19 @@ public class NettyServer extends AbstractServer implements StatisticCallback {
 	}
 
 	private synchronized void initServerBootstrap() {
-		boolean shareChannel = url.getBooleanParameter(URLParamType.shareChannel.getName(),
-				URLParamType.shareChannel.getBooleanValue());
-		final int maxContentLength = url.getIntParameter(URLParamType.maxContentLength.getName(),
-				URLParamType.maxContentLength.getIntValue());
-		int maxServerConnection = url.getIntParameter(URLParamType.maxServerConnection.getName(),
-				URLParamType.maxServerConnection.getIntValue());
-		int workerQueueSize = url.getIntParameter(URLParamType.workerQueueSize.getName(),
-				URLParamType.workerQueueSize.getIntValue());
-
+		boolean shareChannel = url.getBooleanParameter(URLParamType.shareChannel.getName(),	URLParamType.shareChannel.getBooleanValue());
+		final int maxContentLength = url.getIntParameter(URLParamType.maxContentLength.getName(),	URLParamType.maxContentLength.getIntValue());
+		int maxServerConnection = url.getIntParameter(URLParamType.maxServerConnection.getName(),			URLParamType.maxServerConnection.getIntValue());
+		int workerQueueSize = url.getIntParameter(URLParamType.workerQueueSize.getName(),URLParamType.workerQueueSize.getIntValue());
 		int minWorkerThread = 0, maxWorkerThread = 0;
-
-		if (shareChannel) {
-			minWorkerThread = url.getIntParameter(URLParamType.minWorkerThread.getName(),
-					MotanConstants.NETTY_SHARECHANNEL_MIN_WORKDER);
-			maxWorkerThread = url.getIntParameter(URLParamType.maxWorkerThread.getName(),
-					MotanConstants.NETTY_SHARECHANNEL_MAX_WORKDER);
-		} else {
-			minWorkerThread = url.getIntParameter(URLParamType.minWorkerThread.getName(),
-					MotanConstants.NETTY_NOT_SHARECHANNEL_MIN_WORKDER);
-			maxWorkerThread = url.getIntParameter(URLParamType.maxWorkerThread.getName(),
-					MotanConstants.NETTY_NOT_SHARECHANNEL_MAX_WORKDER);
-		}
-
-		
+        // TODO  .... 略 
+        // TODO  StandardThreadExecutor 的目的 ？
 		standardThreadExecutor = (standardThreadExecutor != null && !standardThreadExecutor.isShutdown()) ? standardThreadExecutor
 				: new StandardThreadExecutor(minWorkerThread, maxWorkerThread, workerQueueSize,
 						new DefaultThreadFactory("NettyServer-" + url.getServerPortStr(), true));
 		standardThreadExecutor.prestartAllCoreThreads();
-
 		// 连接数的管理，进行最大连接数的限制 
 		channelManage = new NettyServerChannelManage(maxServerConnection);
-
 		bootstrap = new ServerBootstrap(channelFactory);
 		bootstrap.setOption("child.tcpNoDelay", true);
 		bootstrap.setOption("child.keepAlive", true);
@@ -915,15 +872,15 @@ public class NettyServer extends AbstractServer implements StatisticCallback {
 				standardThreadExecutor);
 
 		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
-        			// FrameDecoder非线程安全，每个连接一个 Pipeline
-        			public ChannelPipeline getPipeline() {
-        				ChannelPipeline pipeline = Channels.pipeline();
-        				pipeline.addLast("channel_manage", channelManage);
-        				pipeline.addLast("decoder", new NettyDecoder(codec, NettyServer.this, maxContentLength));
-        				pipeline.addLast("encoder", new NettyEncoder(codec, NettyServer.this));
-        				pipeline.addLast("handler", handler);
-        				return pipeline;
-        			}
+            // FrameDecoder非线程安全，每个连接一个 Pipeline
+            public ChannelPipeline getPipeline() {
+                ChannelPipeline pipeline = Channels.pipeline();
+                pipeline.addLast("channel_manage", channelManage);
+                pipeline.addLast("decoder", new NettyDecoder(codec, NettyServer.this, maxContentLength));
+                pipeline.addLast("encoder", new NettyEncoder(codec, NettyServer.this));
+                pipeline.addLast("handler", handler);
+                return pipeline;
+            }
         });
 	}
 
@@ -935,7 +892,6 @@ public class NettyServer extends AbstractServer implements StatisticCallback {
 	@Override
 	public synchronized void close(int timeout) {
 		if (state.isCloseState()) {
-			LoggerUtil.info("NettyServer close fail: already close, url={}", url.getUri());
 			return;
 		}
 		if (state.isUnInitState()) {
@@ -961,11 +917,6 @@ public class NettyServer extends AbstractServer implements StatisticCallback {
 	 */
 	@Override
 	public String statisticCallback() {
-		return String.format(
-				"identity: %s connectionCount: %s taskCount: %s queueCount: %s maxThreadCount: %s maxTaskCount: %s",
-				url.getIdentity(), channelManage.getChannels().size(), standardThreadExecutor.getSubmittedTasksCount(),
-				standardThreadExecutor.getQueue().size(), standardThreadExecutor.getMaximumPoolSize(),
-				standardThreadExecutor.getMaxSubmittedTaskCount());
 	}
 
 	/**
