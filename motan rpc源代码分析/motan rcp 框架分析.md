@@ -10,8 +10,8 @@
    - 无缝支持Spring 配置方式，通过简单灵活的配置即可快速接入使用
 
 # 2 架构图
-+ ![RPC](/http://n.sinaimg.cn/tech/transform/20160510/JtXy-fxryhhu2382987.jpg)
-+ ![Motan](/hhttp://n.sinaimg.cn/tech/transform/20160510/V2ql-fxryhhh1870084.jpg)
++ ![RPC](http://n.sinaimg.cn/tech/transform/20160510/JtXy-fxryhhu2382987.jpg)
++ ![Motan](http://n.sinaimg.cn/tech/transform/20160510/V2ql-fxryhhh1870084.jpg)
 
 # 3 RPC框架要重点核心点 
 ## 推荐[从motan看RPC框架实现](http://kriszhang.com/motan-rpc-impl/)
