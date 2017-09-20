@@ -103,7 +103,7 @@
     }
      ```
      
--  ServiceConfig 所以显露外部服务的公用类，如果是用spring集成，将会使用其子类 ServiceConfigBean，暂时不讨论
+-  ServiceConfig 显露外部服务的公用类，如果是用spring集成，将会使用其子类 ServiceConfigBean，暂时不讨论
    1. ServiceConfig 有两个属性  interface ,ref 分别代码接口与实现类。然后指名服务 的分组与版本.
    2. RegistryConfig  代码服务生成后，注册地上，暂时不用zk，因此注释设置相关属性的地方。
    3. ProtocolConfig 服务是用保种协议进行传输与调用的 motan
@@ -344,16 +344,12 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     }
 
     public Map<String, Integer> getProtocolAndPort() {
-         
         return ConfigUtil.parseExport(this.export);
     }
 
     @ConfigDesc(excluded = true)
     public String getHost() {
-        return host;
     }
-
-   
 
 }
  
@@ -374,7 +370,6 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
       - 通过configHandler个哦执行真正的export exporters.add(configHandler.export(interfaceClass, ref, urls))
         - `  configHandler.export(interfaceClass, ref, urls) ` 
         > 将 interfaceClass， ref，向多个注册中心，注册
- 
  
  
 #####  SimpleConfigHandler 执行服务暴露
@@ -531,14 +526,12 @@ public class DefaultProvider<T> extends AbstractProvider<T> {
        response.setAttachments(request.getAttachments());
        return response;
    }
-
 }
 
 ```
   
 
 ![ServiceConfig](DefaultProvider.png)
-
 
 ######  DefaultRpcProtocol 如何暴露  DefaultProvider
 1. xxx
@@ -668,7 +661,6 @@ public class DefaultRpcProtocol extends AbstractProtocol {
 
 
 ```
-
 
 1. ProtocolFilterDecorator(DefaultRpcProtocol proto)
 2. 调用 AbstractProtocol.export();
@@ -1051,9 +1043,7 @@ public class NettyChannelHandler extends SimpleChannelHandler {
 	}
 
 	/**
-	 * <pre>
 	 *  request process: 主要来自于client的请求，需要使用threadPoolExecutor进行处理，避免service message处理比较慢导致iothread被阻塞
-	 * </pre>
 	 */
 	private void processRequest(final ChannelHandlerContext ctx, MessageEvent e) {
 		final Request request = (Request) e.getMessage();
@@ -1078,7 +1068,8 @@ public class NettyChannelHandler extends SimpleChannelHandler {
 	}
 
 	private void processRequest(ChannelHandlerContext ctx, Request request, long processStartTime) {
-		Object result = messageHandler.handle(serverChannel, request);
+		// TODO 根据 路由判断，找到对应的rpvoder#invoke 其实最终找到的是DefautlProvider类 
+	    Object result = messageHandler.handle(serverChannel, request);
 		DefaultResponse response = null;
 		if (!(result instanceof DefaultResponse)) {
 			response = new DefaultResponse(result);
@@ -1088,6 +1079,7 @@ public class NettyChannelHandler extends SimpleChannelHandler {
 		response.setRequestId(request.getRequestId());
 		response.setProcessTime(System.currentTimeMillis() - processStartTime);
 		if (ctx.getChannel().isConnected()) {
+		    // TODO 回写结果到客户端
 			ctx.getChannel().write(response);
 		}
 	}
@@ -1103,6 +1095,51 @@ public class NettyChannelHandler extends SimpleChannelHandler {
 }
 
 ```
+###### 稍微总结一下
+1。 ServiceConfig #export())
+    - -. doExport()
+      - -> ConfigHandler的实现 SimpleConfigHandler#export
+        -  -> 构造service url
+        -  -> 构造s Protocol 默认实现类 DefaultProtocol
+        -  -> 构造s Provider 默认实现类 DefaultProvider
+        -  -> Protocol.exporter(provider,serviceUrl ) 构造s Exporter 默认实现类 
+           -  -> DefaultRpcProtocol#createExporter : new DefaultRpcExporter() 实例后 init
+              - -> DefaultRpcExporter构造器
+                - -> 实例化 server:生成一个nettyserver对象，使用netty api构造一个bootstrap监听 指定商品
+                - -> 实例化 ProviderMessageRouter 路由
+              - -> DefaultRpcExporter 实例 doInit()
+                 - -> server.open(); 完成服务端商品监听 服务启动。
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     |   URL  |   URL  |
