@@ -1096,9 +1096,9 @@ public class NettyChannelHandler extends SimpleChannelHandler {
 
 ```
 # 稍微总结一下
-1。 ServiceConfig #export())
-    - -. doExport()
-      - -> ConfigHandler的实现 SimpleConfigHandler#export
+ServiceConfig #export())
+ - -> doExport()
+   -  -> ConfigHandler的实现 SimpleConfigHandler#export
         -  -> 构造service url
         -  -> 构造s Protocol 默认实现类 DefaultProtocol
         -  -> 构造s Provider 默认实现类 DefaultProvider
