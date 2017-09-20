@@ -9,9 +9,11 @@
    - 良好的 SPI(Service Provider Interface)扩展，详细的调用统计，灵活支持多种 RPC 传输协议，在使用上，
    - 无缝支持Spring 配置方式，通过简单灵活的配置即可快速接入使用
 
-# 2 架构图
-+ ![RPC](http://n.sinaimg.cn/tech/transform/20160510/JtXy-fxryhhu2382987.jpg)
-+ ![Motan](http://n.sinaimg.cn/tech/transform/20160510/V2ql-fxryhhh1870084.jpg)
+# 2 架构图 （图片来自网上）
++ 整体结构
+  ![RPC](http://n.sinaimg.cn/tech/transform/20160510/JtXy-fxryhhu2382987.jpg)
++ 分层结构
+  ![Motan](http://n.sinaimg.cn/tech/transform/20160510/V2ql-fxryhhh1870084.jpg)
 
 # 3 RPC框架要重点核心点 
 ## 推荐[从motan看RPC框架实现](http://kriszhang.com/motan-rpc-impl/)
