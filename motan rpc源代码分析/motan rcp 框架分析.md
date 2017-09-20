@@ -1005,8 +1005,9 @@ public class NettyServer extends AbstractServer implements StatisticCallback {
     -  threadPoolExecutor.execute(new Runnable() { 
           processRequest(ChannelHandlerContext ctx, Request request, long processStartTime) {
        }
-    - processRequest(ChannelHandlerContext ctx, Request request, long processStartTime)实现关键的罗中
-      >` Object result = messageHandler.handle(serverChannel, request);`
+    - processRequest(ChannelHandlerContext ctx, Request request, long processStartTime)实现关键内容
+      >` Object result = messageHandler.handle(serverChannel, request);
+      ***`
     - 获取 service imp的方法调用结果，将结果写入netty 通道。
 + messageHandler 是什么？作用
   - 对于每一个request请求，服务端需要路由找到对应的接口实现方法，然后invoke得到结果
