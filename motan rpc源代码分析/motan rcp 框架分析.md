@@ -375,7 +375,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
       - `  ConfigHandler configHandler = ExtensionLoader.getExtensionLoader(ConfigHandler.class).getExtension(MotanConstants.DEFAULT_VALUE); ` 
       - 通过configHandler个哦执行真正的export exporters.add(configHandler.export(interfaceClass, ref, urls))
          - `  configHandler.export(interfaceClass, ref, urls) ` 
-          > 将 interfaceClass， ref，向多个注册中心，注册
+            > 将 interfaceClass， ref，向多个注册中心，注册
  
  
 #### SimpleConfigHandler 执行服务暴露
@@ -462,8 +462,8 @@ public class SimpleConfigHandler implements ConfigHandler {
     - 根据注册地址生成servcie url ？
        - StringTools.urlDecode(registryUrls.get(0).getParameter(URLParamType.embed.getName()));
        - 为什么取的是注册地址第一个呢？ ` registryUrls.get(0).getParameter(URLParamType.embed.getName());`
-         >  1. motan://192.168.1.1:8002/com.weibo.motan.demo.service.MotanDemoService?id=motan&export=motan:8002&protocol=motan&refreshTimestamp=1505801631928&group=motan-demo-rpc&nodeType=service&version=1.0&
-            2. String serviceStr =
+         > 1. motan://192.168.1.1:8002/com.weibo.motan.demo.service.MotanDemoService?id=motan&export=motan:8002&protocol=motan&refreshTimestamp=1505801631928&group=motan-demo-rpc&nodeType=service&version=1.0&
+         > 2. String serviceStr =
 2. 服务协议初步分析:类似于java 标准api  URL类的方式
    -  motan  表示用motan协议
    -  192.168.1.1:8002:  当前服务的ip:port
