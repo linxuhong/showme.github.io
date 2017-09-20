@@ -484,7 +484,7 @@ public class SimpleConfigHandler implements ConfigHandler {
    
    -- 如何将provider暴露 · Exporter<T> exporter = protocol.export(provider, serviceUrl);·
       
-      > 服务暴露成功，则将服务添加 到对应注册中心地址。先export 再register
+     > 服务暴露成功，则将服务添加 到对应注册中心地址。先export 再register
 
 #####  DefaultProvider 如何封装服务端调用：原理 
 
@@ -540,8 +540,7 @@ public class DefaultProvider<T> extends AbstractProvider<T> {
 ![ServiceConfig](DefaultProvider.png)
 
 #####  DefaultRpcProtocol 如何暴露  DefaultProvider
-1. xxx
-
+1. 翠花上码
 ```java
 
 public class ProtocolFilterDecorator implements Protocol {
