@@ -1,5 +1,5 @@
                            sina motan 分析  多环境打包
-## 1. 场景
+# 1. 场景
 - motan是微博开源的一套轻量级、方便使用的RPC框架
 - 项目地址：https://github.com/weibocom/motan
 - Motan 是基于 Java 的高性能轻量级 RPC 框架，
@@ -166,7 +166,7 @@
                         
 ***
      
-##  公共组件部分
+# 公共组件部分
 1. SPI：Service Provider Interface，主要通过ExtensionLoader提供扩展点功能，用来动态装载接口具体实现，以提供客户端扩展能力。
 2. Logger：使用slf4j，提供整个框架统一的日志记录工具。
 3. Statistic：使用定时回调方式，收集和记录框架监控信息。
@@ -174,7 +174,7 @@
 5. Switcher：提供开关控制服务，能够控制框架关键路径的升级和降级。
 6. Exception：统一异常处理，分为业务异常，框架异常，服务异常等。
 ***
-## 层的作用：
+# 层的作用：
 
 1. Config层：主要提供了配置读取，解析，实体生成。同时他也是整个框架的入口，
 2. Proxy层：服务端无proxy，客户端具有代理功能，他通过InvocationHandler来拦截方法调用。目前只使用了jdk原生动态代理工具。
@@ -185,8 +185,8 @@
 
  
  ***
-##  Server端
-### 要关注的问题
+# Server端
+## 要关注的问题
 1. 配置解析与传递
 2。服务URL与注册URL
 3. SPI 机制
@@ -196,10 +196,10 @@
 
 ***
 
-### 从ServiceConfig.export()开始。
-#### 类图
+## 从ServiceConfig.export()开始。
+### 类图
   ![ServiceConfig](ServiceConfig.png)
-#####   ServiceConfig 主要逻辑：
+####  ServiceConfig 主要逻辑：
 ```java
 
   
@@ -372,7 +372,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         > 将 interfaceClass， ref，向多个注册中心，注册
  
  
-#####  SimpleConfigHandler 执行服务暴露
+#### SimpleConfigHandler 执行服务暴露
 
   ![SimpleConfigHandler](SimpleConfigHandler.png)
 
@@ -451,7 +451,7 @@ public class SimpleConfigHandler implements ConfigHandler {
 
 ```
 
-###### SimpleConfigHandler#export()方法执行服务暴露(refer方法是客户端使用，暂时不讨论)
+##### SimpleConfigHandler#export()方法执行服务暴露(refer方法是客户端使用，暂时不讨论)
 1.  motan服务协议的是怎么样的？
     - 根据注册地址生成servcie url ？
        - StringTools.urlDecode(registryUrls.get(0).getParameter(URLParamType.embed.getName()));
@@ -480,7 +480,7 @@ public class SimpleConfigHandler implements ConfigHandler {
       
       > 服务暴露成功，则将服务添加 到对应注册中心地址。先export 再register
 
-######  DefaultProvider 如何封装服务端调用：原理 
+#####  DefaultProvider 如何封装服务端调用：原理 
 
 1. 源代码
 
@@ -533,7 +533,7 @@ public class DefaultProvider<T> extends AbstractProvider<T> {
 
 ![ServiceConfig](DefaultProvider.png)
 
-######  DefaultRpcProtocol 如何暴露  DefaultProvider
+#####  DefaultRpcProtocol 如何暴露  DefaultProvider
 1. xxx
 
 ```java
@@ -669,8 +669,8 @@ public class DefaultRpcProtocol extends AbstractProtocol {
 5. 完成exporter实现 
 
   ![DefaultRpcExporter](DefaultRpcExporter.png)
-######  DefaultRpcExporter 是如何 暴露的
-#######  DefaultRpcExporter.java
+#####  DefaultRpcExporter 是如何 暴露的
+######  DefaultRpcExporter.java
 
 ```java
 class DefaultRpcExporter<T> extends AbstractExporter<T> {
@@ -1095,7 +1095,7 @@ public class NettyChannelHandler extends SimpleChannelHandler {
 }
 
 ```
-###### 稍微总结一下
+# 稍微总结一下
 1。 ServiceConfig #export())
     - -. doExport()
       - -> ConfigHandler的实现 SimpleConfigHandler#export
