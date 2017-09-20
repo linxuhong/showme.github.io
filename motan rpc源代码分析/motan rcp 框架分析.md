@@ -365,17 +365,17 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 2.  loadRegistryUrls():返回注册中心地址，是一个list,打印出来后的结果如下：
     - []local://127.0.0.1:0/com.weibo.api.motan.registry.RegistryService?group=default_rpc]
     - AbstractInterfaceConfig#loadRegistryUrls 用于收集,serviceconfig中设置的注册中心信息
-    > motanDemoService.setRegistry(zookeeperRegistry);
+      > motanDemoService.setRegistry(zookeeperRegistry);
 ***
 3. 执行 ` ServiceConfig#doExport() ` 方法 
    1. 根据一系统 参数构造一个服务 service URL,请注意（motan中有register url ,servcieurl）
-      > URL serviceUrl = new URL(protocolName, hostAddress, port, interfaceClass.getName(), map);
+       > URL serviceUrl = new URL(protocolName, hostAddress, port, interfaceClass.getName(), map);
    2. 此URL对象模仿了 java 标准api的方法 : protocol url param,后面再分析这个URL，这个是整个motan协议结构的中心
    3. 生成了 service  url,然后，通过sip的方式，找到ConfigHandler的实现类 SimpleConfigHandler
       - `  ConfigHandler configHandler = ExtensionLoader.getExtensionLoader(ConfigHandler.class).getExtension(MotanConstants.DEFAULT_VALUE); ` 
       - 通过configHandler个哦执行真正的export exporters.add(configHandler.export(interfaceClass, ref, urls))
-        - `  configHandler.export(interfaceClass, ref, urls) ` 
-        > 将 interfaceClass， ref，向多个注册中心，注册
+         - `  configHandler.export(interfaceClass, ref, urls) ` 
+          > 将 interfaceClass， ref，向多个注册中心，注册
  
  
 #### SimpleConfigHandler 执行服务暴露
@@ -462,8 +462,8 @@ public class SimpleConfigHandler implements ConfigHandler {
     - 根据注册地址生成servcie url ？
        - StringTools.urlDecode(registryUrls.get(0).getParameter(URLParamType.embed.getName()));
        - 为什么取的是注册地址第一个呢？ ` registryUrls.get(0).getParameter(URLParamType.embed.getName());`
-       >  1. motan://192.168.1.1:8002/com.weibo.motan.demo.service.MotanDemoService?id=motan&export=motan:8002&protocol=motan&refreshTimestamp=1505801631928&group=motan-demo-rpc&nodeType=service&version=1.0&
-          2. String serviceStr =
+         >  1. motan://192.168.1.1:8002/com.weibo.motan.demo.service.MotanDemoService?id=motan&export=motan:8002&protocol=motan&refreshTimestamp=1505801631928&group=motan-demo-rpc&nodeType=service&version=1.0&
+            2. String serviceStr =
 2. 服务协议初步分析:类似于java 标准api  URL类的方式
    -  motan  表示用motan协议
    -  192.168.1.1:8002:  当前服务的ip:port
