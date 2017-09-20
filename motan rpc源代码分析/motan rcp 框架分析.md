@@ -974,7 +974,7 @@ public class NettyServer extends AbstractServer implements StatisticCallback {
 
 ```
 
-1. NettyServer.open()做了什么？ 创建了一个netty server ，监听 指定商品。
+1. NettyServer.open()做了什么？ 创建了一个netty server ，监听 指定端口。
    - 设置 ip port 
    - 在pipeline中增加channel factory 
    - 增加编码，解码器 codes :后面分析 
@@ -1105,13 +1105,13 @@ ServiceConfig #export())
         -  -> Protocol.exporter(provider,serviceUrl ) 构造s Exporter 默认实现类 
            -  -> DefaultRpcProtocol#createExporter : new DefaultRpcExporter() 实例后 init
               - -> DefaultRpcExporter构造器
-                - -> 实例化 server:生成一个nettyserver对象，使用netty api构造一个bootstrap监听 指定商品
+                - -> 实例化 server:生成一个nettyserver对象，使用netty api构造一个bootstrap监听 指定端口
                 - -> 实例化 ProviderMessageRouter 路由
               - -> DefaultRpcExporter 实例 doInit()
-                 - -> server.open(); 完成服务端商品监听 服务启动。
+                 - -> server.open(); 完成服务端端口监听 服务启动。
         
 
-# 示完待续
+# 待续
 
 
 
