@@ -1068,7 +1068,286 @@ ServiceConfig #export())
                  - -> server.open(); 完成服务端端口监听 服务启动。
         
 
-# 待续
+# 一个请求Request 到达服务端分析
+ { client send `r equest` }   --> { network } -->  {  server listen port }
+ 
+## 服务端server.open后，监听 指定端口，获取网络数据流
+### netty server 如何解析这个网络请求数据，并将其反序列化成 Request对象
+```java
+
+class NettyServer{
+   public void  initServerBootstrap() {
+       // TODO 获取网络流后,使用 NettyDecoder对数据流进行解码
+        pipeline.addLast("decoder", new NettyDecoder(codec, NettyServer.this, maxContentLength));
+        pipeline.addLast("encoder", new NettyEncoder(codec, NettyServer.this));
+   }
+}
+
+```
+
+###  NettyEncoder NettyDecoder最终调用的是  DefaultRpcCodec
+1. 对于client发起的request请求
+   - NettyClient : encode
+   -     ↓ Request ↑
+   - NettServer : decode
+1. 对于server 发起的 response 请求
+   - NettyClient : decode
+   -     ↓ response ↑
+   - NettServer : encode
+***
+
+### DefaultRpcCodec逻辑:
+
+1. NettyClient encode逻辑
+  -  writye body : interfacename,methodname ,method paramter
+  -  writye head : 16个字节
+  -  head + body (对象使用hessian序列化)
+2. NettyServer decode 逻辑 
+  -  writye head : 16个字节
+  -  writye body : interfacename,methodname ,method paramter
+  -  body (对象使用hessian序列化)
+  - ` server 找到了接口方法，及参数值 ，下面接着如何找到对应的provider调用`
+```java
+public class DefaultRpcCodec extends AbstractCodec {
+    private static final short MAGIC = (short) 0xF0F0;
+    private static final byte MASK = 0x07;
+
+    @Override
+    public byte[] encode(Channel channel, Object message) throws IOException {
+        if (message instanceof Request) {
+            return encodeRequest(channel, (Request) message);
+        } else if (message instanceof Response) {
+            return encodeResponse(channel, (Response) message);
+        }
+    }
+    /**request body 数据：
+     */
+    private byte[] encodeRequest(Channel channel, Request request) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        ObjectOutput output = createOutput(outputStream);
+        //  TODO 生成协议body 
+        //  TODO 1 接口名
+        output.writeUTF(request.getInterfaceName());
+        //  TODO 1 方法名    
+        output.writeUTF(request.getMethodName());
+        //  TODO 3 方法参数类型
+        output.writeUTF(request.getParamtersDesc());
+        // TODO 4 使用hessian序列化类
+        Serialization serialization =
+                ExtensionLoader.getExtensionLoader(Serialization.class).getExtension(
+                        channel.getUrl().getParameter(URLParamType.serialize.getName(), URLParamType.serialize.getValue()));
+
+        if (request.getArguments() != null && request.getArguments().length > 0) {
+            for (Object obj : request.getArguments()) {
+                // TODO 使用hhessain序列化object
+                serialize(output, obj, serialization);
+            }
+        }
+        output.writeInt(request.getAttachments().size());
+        for (Map.Entry<String, String> entry : request.getAttachments().entrySet()) {
+            output.writeUTF(entry.getKey());
+            output.writeUTF(entry.getValue());
+        }
+        output.flush();
+        byte[] body = outputStream.toByteArray();
+        byte flag = MotanConstants.FLAG_REQUEST;
+        output.close();
+        // TODO 5 将motan 协议头与body内容合并
+        return encode(body, flag, request.getRequestId());
+    }
+    
+    /**
+     * 数据协议：
+	 * header:  16个字节 
+	 * 0-15 bit 	:  magic
+	 * 16-23 bit	:  version
+	 * 24-31 bit	:  extend flag , 其中： 29-30 bit: event 可支持4种event，比如normal, exception等,  31 bit : 0 is request , 1 is response 
+	 * 32-95 bit 	:  request id
+	 * 96-127 bit 	:  body content length
+     */
+    private byte[] encode(byte[] body, byte flag, long requestId) throws IOException {
+        byte[] header = new byte[RpcProtocolVersion.VERSION_1.getHeaderLength()];
+        int offset = 0;
+
+        // 0 - 15 bit : magic  标识这是一个motan协议
+        ByteUtil.short2bytes(MAGIC, header, offset);
+        offset += 2;
+
+        // 16 - 23 bit : version  标识协议版本
+        header[offset++] = RpcProtocolVersion.VERSION_1.getVersion();
+
+        // 24 - 31 bit : extend flag  
+        header[offset++] = flag;
+
+        // 32 - 95 bit : requestId
+        ByteUtil.long2bytes(requestId, header, offset);
+        offset += 8;
+
+        // 96 - 127 bit : body content length
+        ByteUtil.int2bytes(body.length, header, offset);
+        byte[] data = new byte[header.length + body.length];
+        System.arraycopy(header, 0, data, 0, header.length);
+        System.arraycopy(body, 0, data, header.length, body.length);
+        return data;
+    }  
+     
+  /**
+     * decode data
+	 * 		对于client端：主要是来自server端的response or exception
+	 * 		对于server端: 主要是来自client端的request
+     */
+    @Override
+    public Object decode(Channel channel, String remoteIp, byte[] data) throws IOException {
+        if (data.length <= RpcProtocolVersion.VERSION_1.getHeaderLength()) {
+        }
+        short type = ByteUtil.bytes2short(data, 0);
+        if (data[2] != RpcProtocolVersion.VERSION_1.getVersion()) { //TODO 
+        }
+        // TODO 解码头码数据
+        int bodyLength = ByteUtil.bytes2int(data, 12);
+        byte flag = data[3];
+        byte dataType = (byte) (flag & MASK);
+        boolean isResponse = (dataType != MotanConstants.FLAG_REQUEST);
+        byte[] body = new byte[bodyLength];
+        // TODO 解码body内容
+        System.arraycopy(data, RpcProtocolVersion.VERSION_1.getHeaderLength(), body, 0, bodyLength);
+
+        long requestId = ByteUtil.bytes2long(data, 4);
+        Serialization serialization =
+                ExtensionLoader.getExtensionLoader(Serialization.class).getExtension(
+                        channel.getUrl().getParameter(URLParamType.serialize.getName(), URLParamType.serialize.getValue()));
+        if (isResponse) { // response
+            return decodeResponse(body, dataType, requestId, serialization);
+        } else {
+            return decodeRequest(body, requestId, serialization);
+        }
+         
+    }
+    
+
+    private Object decodeRequest(byte[] body, long requestId, Serialization serialization) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(body);
+        ObjectInput input = createInput(inputStream);
+
+       // TODO  body内容解码 与encode是个逆向操作
+        String interfaceName = input.readUTF();
+        String methodName = input.readUTF();
+        String paramtersDesc = input.readUTF();
+
+        DefaultRequest rpcRequest = new DefaultRequest();
+        rpcRequest.setRequestId(requestId);
+        rpcRequest.setInterfaceName(interfaceName);
+        rpcRequest.setMethodName(methodName);
+        rpcRequest.setParamtersDesc(paramtersDesc);
+        rpcRequest.setArguments(decodeRequestParameter(input, paramtersDesc, serialization));
+        rpcRequest.setAttachments(decodeRequestAttachments(input));
+        input.close();
+        return rpcRequest;
+    }
+
+    private Object decodeResponse(byte[] body, byte dataType, long requestId, Serialization serialization) throws IOException,
+            ClassNotFoundException {
+        // ......
+        return response;
+    }
+}
+
+
+
+```
+### 于是又回到了 NettyChannelHandler处理业务请求转发
+```java
+class NettyChannelHandler{
+    public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+    		Object message = e.getMessage();
+    		if (message instanceof Request) {
+    			processRequest(ctx, e);
+    		 }
+    }
+    	
+    private void processRequest(ChannelHandlerContext ctx, Request request, long processStartTime) {
+        Object result = messageHandler.handle(serverChannel, request);
+    }
+}
+
+
+```  
+
+1.  messageHandler实现方法路由？如何找到指定接口的实现类
+
+```java
+     class DefaultRpcExporter<T> extends AbstractExporter<T> {   
+       public DefaultRpcExporter (){
+          requestRouter = new ProviderProtectedMessageRouter(provider);  
+       }
+      }
+    
+```
+2. 还记得DefaultRpcExporter类么
+
+- ProviderMessageRouter#handler
+  - -> ProviderMessageRouter#call方法
+    - ->  super.lookup():找到method
+  - -> method.invoke() 生成结果  
+         
+![ProviderMessageRouter](ProviderMessageRouter.png)
+ 
+3  DefaultRpcProvider#call
+   -  AbstractProvider#invoke
+ ```java
+ 
+ class DefaultRpcProvider {
+     public Response invoke(Request request) {
+        DefaultResponse response = new DefaultResponse();
+        //  TODO AbstractProvider#lookup找到对应的方法
+        Method method = lookup(request);
+        if (method == null) {    return response;      }
+        // TODO 反射回调，生成response对象，netty server 的pipeline对response进行编码，发送至客户端 
+        Object value = method.invoke(proxyImpl, request.getArguments());
+        response.setValue(value);
+                    
+        // 传递rpc版本和attachment信息方便不同rpc版本的codec使用。
+        response.setRpcProtocolVersion(request.getRpcProtocolVersion());
+        response.setAttachments(request.getAttachments());
+        return response;
+    }
+ }
+ 
+class AbstractProvider {
+     protected Method lookup(Request request) {
+           String methodDesc = ReflectUtil.
+               getMethodDesc(request.getMethodName(), request.getParamtersDesc());
+           return methodMap.get(methodDesc);
+       }
+}
+ 
+```
+
+***
+***
+
+| 协议位	| 意义| 
+ | ------- | ---- |
+| 0-15 bit	| magic| 
+| 16-23 bit| 	version| 
+| 24-28 bit| 	extend flag| 
+| 29-30 bit | 	event 比如normal, exception等| 
+| 31 bit	| 0 is request , 1 is response
+| 32-95 bit	| request id| 
+| 96-127 bit| 	body content length| 
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
