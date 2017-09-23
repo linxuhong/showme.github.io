@@ -1068,7 +1068,7 @@ ServiceConfig #export())
                  - -> server.open(); 完成服务端端口监听 服务启动。
         
 
-# 一个请求Request 到达服务端分析
+# 服务端如何解析Request请求
  { client send `r equest` }   --> { network } -->  {  server listen port }
  
 ## 服务端server.open后，监听 指定端口，获取网络数据流
@@ -1228,7 +1228,6 @@ public class DefaultRpcCodec extends AbstractCodec {
     private Object decodeRequest(byte[] body, long requestId, Serialization serialization) throws IOException, ClassNotFoundException {
         ByteArrayInputStream inputStream = new ByteArrayInputStream(body);
         ObjectInput input = createInput(inputStream);
-
        // TODO  body内容解码 与encode是个逆向操作
         String interfaceName = input.readUTF();
         String methodName = input.readUTF();
@@ -1322,6 +1321,510 @@ class AbstractProvider {
 }
  
 ```
+
+
+# Client客户端启动过程
+
+## API方式
+         
+        // 设置接口及实现类
+        RefererConfig<MotanDemoService> motanDemoServiceReferer = new RefererConfig<MotanDemoService>();
+        motanDemoServiceReferer.setInterface(MotanDemoService.class);
+        
+        // 配置服务的group以及版本号
+        // 配置注册中心直连调用
+        // 配置ZooKeeper注册中心
+        
+        // 配置RPC协议
+        ProtocolConfig protocol = new ProtocolConfig();
+        protocol.setId("motan");
+        protocol.setName("motan");
+        motanDemoServiceReferer.setProtocol(protocol);
+        motanDemoServiceReferer.setDirectUrl("localhost:8002");  // 注册中心直连调用需添加此配置
+        // 使用服务
+        MotanDemoService service = motanDemoServiceReferer.getRef();
+        service.hello("motan " +i)
+     
+### RefererConfig 设置接口类即可
+
+```java
+public class RefererConfig<T> extends AbstractRefererConfig {
+    private Class<T> interfaceClass;
+    // 具体到方法的配置
+    protected List<MethodConfig> methods;
+    // 点对点直连服务提供地址
+    private String directUrl;
+    private AtomicBoolean initialized = new AtomicBoolean(false);
+
+    private T ref;
+    public T getRef() {
+        if (ref == null) {
+            initRef();
+        }
+        return ref;
+    }
+
+    public synchronized void initRef() {
+        if (initialized.get()) {
+            return;
+        }
+        interfaceClass = (Class) Class.forName(interfaceClass.getName(), true, Thread.currentThread().getContextClassLoader());
+        checkInterfaceAndMethods(interfaceClass, methods);
+        clusterSupports = new ArrayList<ClusterSupport<T>>(protocols.size());
+        List<Cluster<T>> clusters = new ArrayList<Cluster<T>>(protocols.size());
+        String proxy = null;
+
+        ConfigHandler configHandler = ExtensionLoader.getExtensionLoader(ConfigHandler.class).getExtension(MotanConstants.DEFAULT_VALUE);
+
+        List<URL> registryUrls = loadRegistryUrls();
+        String localIp = getLocalHostAddress(registryUrls);
+        for (ProtocolConfig protocol : protocols) {
+            Map<String, String> params = new HashMap<String, String>();
+            params.put(URLParamType.nodeType.getName(), MotanConstants.NODE_TYPE_REFERER);
+            // TODO 生成ref url
+            URL refUrl = new URL(protocol.getName(), localIp, MotanConstants.DEFAULT_INT_VALUE, interfaceClass.getName(), params);
+            ClusterSupport<T> clusterSupport = createClusterSupport(refUrl, configHandler, registryUrls);
+            clusterSupports.add(clusterSupport);
+            clusters.add(clusterSupport.getCluster());
+            
+            proxy = (proxy == null) ? refUrl.getParameter(URLParamType.proxy.getName(), URLParamType.proxy.getValue()) : proxy;
+        }
+        // TODO 根据接口类生成代理类。完成底层 transport的传输
+        ref = configHandler.refer(interfaceClass, clusters, proxy);
+        initialized.set(true);
+    }
+}
+
+
+```
+
+### 关键点
+
+       `ref = configHandler.refer(interfaceClass, clusters, proxy);`
+- 熟悉的 SimpleConfigHandler.java
+```java
+public class SimpleConfigHandler implements ConfigHandler {
+
+    @Override
+    public <T> ClusterSupport<T> buildClusterSupport(Class<T> interfaceClass, List<URL> registryUrls) {
+        ClusterSupport<T> clusterSupport = new ClusterSupport<T>(interfaceClass, registryUrls);
+        clusterSupport.init();
+        return clusterSupport;
+    }
+
+    @Override
+    public <T> T refer(Class<T> interfaceClass, List<Cluster<T>> clusters, String proxyType) {
+        // TODO 依旧是对过SPI，找到客情端代理工厂，生成代理类 
+        ProxyFactory proxyFactory = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getExtension(proxyType);
+        return proxyFactory.getProxy(interfaceClass, new RefererInvocationHandler<T>(interfaceClass, clusters));
+    }
+}
+```
+#### 代理是什么
+1. 静态代理（静态定义代理类，我们自己静态定义的代理类。比如我们自己定义一个明星的经纪人类）
+    
+            //  每一个接口类都要创建一个对应的代理类，增加了代码量。 其次一旦接口发生变化，代理也要修改。     
+            public interface Star {
+                void confer();//面谈
+            }
+            public class ProxyStar implements Star{
+                private Star star;//真实对象的引用（明星）
+                @Override
+                public void confer() {
+                    System.out.println("ProxyStar.confer() start ");
+                    star.confer(); // TODO 此处才是真实对象的调用
+                    System.out.println("ProxyStar.confer() end ");
+                }
+            }
+            
+            public class RealStar implements Star{
+                @Override
+                public void confer() {
+                    System.out.println("RealStar.confer()");
+                }
+            }
+            public static void main(String[] args) {
+                Star real = new RealStar();
+                Star proxy = new ProxyStar(real);
+                proxy.sing();//真实对象的操作（明星唱歌）
+            }
+            
+2. 动态代理（通过程序动态生成代理类，该代理类不是我们自己定义的。运行期间由JVM根据反射等机制动态的生！       
+
+3. 怎么样创建的代理 motan中使用  com.weibo.api.motan.proxy.spi.JdkProxyFactory
+
+        public class JdkProxyFactory implements ProxyFactory {
+            // 使用JDK 动态代理
+            @SuppressWarnings("unchecked")
+            public <T> T getProxy(Class<T> clz, InvocationHandler invocationHandler) {
+                return (T) Proxy.newProxyInstance(this.getClass().getClassLoader(), new Class[] {clz}, invocationHandler);
+            }
+        }
+        
+        
+```java
+
+public class RefererInvocationHandler<T> implements InvocationHandler {
+
+    private List<Cluster<T>> clusters;
+    private Class<T> clz;
+    private SwitcherService switcherService = null;
+    private String interfaceName;
+
+    public RefererInvocationHandler(Class<T> clz, Cluster<T> cluster) {
+        init();
+    }
+
+    public RefererInvocationHandler(Class<T> clz, List<Cluster<T>> clusters) {
+        this.clz = clz;
+        this.clusters = clusters;
+        init();
+    }
+
+    private void init() {
+        // clusters 不应该为空
+        String switchName =
+                this.clusters.get(0).getUrl().getParameter(URLParamType.switcherService.getName(), URLParamType.switcherService.getValue());
+        switcherService = ExtensionLoader.getExtensionLoader(SwitcherService.class).getExtension(switchName);
+        interfaceName = MotanFrameworkUtil.removeAsyncSuffix(clz.getName());
+    }
+
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        if (isLocalMethod(method)) {
+            throw new MotanServiceException("can not invoke local method:" + method.getName());
+        }
+        DefaultRequest request = new DefaultRequest();
+        request.setRequestId(RequestIdGenerator.getRequestId());
+        request.setArguments(args);
+        String methodName = method.getName();
+        boolean async = false;
+        if (methodName.endsWith(MotanConstants.ASYNC_SUFFIX) && method.getReturnType().equals(ResponseFuture.class)) {
+            methodName = MotanFrameworkUtil.removeAsyncSuffix(methodName);
+            async = true;
+        }
+        RpcContext.getContext().putAttribute(MotanConstants.ASYNC_SUFFIX, async);
+        //  TODO   主要是设置 request 中的方法包，参数等信息
+        request.setMethodName(methodName);
+        request.setParamtersDesc(ReflectUtil.getMethodParamDesc(method));
+        request.setInterfaceName(interfaceName);
+        request.setAttachment(URLParamType.requestIdFromClient.getName(), String.valueOf(RequestIdGenerator.getRequestIdFromClient()));
+
+        // 当 referer配置多个protocol的时候，比如A,B,C，
+        // 那么正常情况下只会使用A，如果A被开关降级，那么就会使用B，B也被降级，那么会使用C
+        for (Cluster<T> cluster : clusters) {
+            String protocolSwitcher = MotanConstants.PROTOCOL_SWITCHER_PREFIX + cluster.getUrl().getProtocol();
+            Switcher switcher = switcherService.getSwitcher(protocolSwitcher);
+            if (switcher != null && !switcher.isOn()) {
+                continue;
+            }
+            request.setAttachment(URLParamType.version.getName(), cluster.getUrl().getVersion());
+            request.setAttachment(URLParamType.clientGroup.getName(), cluster.getUrl().getGroup());
+            // 带上client的application和module
+            Response response = null;
+            try {
+                //  TODO 代码 cluster调用远程服务,本质上是将reqeust的相关信息发送到服务端
+                response = cluster.call(request);
+                if (async && response instanceof ResponseFuture) {
+                    return response;
+                } else {
+                    return response.getValue();
+                }
+            } catch (RuntimeException e) {
+            }
+        }
+    }
+}
+```
+####  客户端如何选择一个服务地址呢--集群中选择
+
+#####  集群 cluster.call(request)  ，这里cluster是什么？
+1. cluster是一系列[] interface,registryUrls] 的配置类的对象集合
+    ` ClusterSupport<T> clusterSupport = new ClusterSupport<T>(interfaceClass, registryUrls);`
+     ` clusters.add(clusterSupport.getCluster());`
+2. ClusterSupport 做了什么?
+- ClusterSupport 提供了对Cluster的一些辅助工作，cluster生成，参数初始化
+ ```java
+ class ClusterSupport {
+ 
+     private void prepareCluster() {
+            String clusterName = url.getParameter(URLParamType.cluster.getName(), URLParamType.cluster.getValue());
+            String loadbalanceName = url.getParameter(URLParamType.loadbalance.getName(), URLParamType.loadbalance.getValue());
+            String haStrategyName = url.getParameter(URLParamType.haStrategy.getName(), URLParamType.haStrategy.getValue());
+            // TODO 通过SPI获取默认的  负载均衡实现  ，高可用策略实现 
+            System.out.println(lusterName); // default
+            System.out.println(" " +loadbalanceName); // activeWeight
+            System.out.println(" " +haStrategyName);  // failover
+            
+            cluster = ExtensionLoader.getExtensionLoader(Cluster.class).getExtension(clusterName);
+            LoadBalance<T> loadBalance = ExtensionLoader.getExtensionLoader(LoadBalance.class).getExtension(loadbalanceName);
+            HaStrategy<T> ha = ExtensionLoader.getExtensionLoader(HaStrategy.class).getExtension(haStrategyName);
+            cluster.setLoadBalance(loadBalance);
+            cluster.setHaStrategy(ha);
+            cluster.setUrl(url);
+        }
+ }
+```
+-  cluster的 HaStrategy 与 LoadBalance
+   + 负载均衡的实现  com.weibo.api.motan.cluster.loadbalance.ActiveWeightLoadBalance
+   + 高可用策略实现  com.weibo.api.motan.cluster.ha.FailoverHaStrategy
+
+   ![ActiveWeightLoadBalance](NettyChannelHandler.png)
+   
+   ![FailoverHaStrategy](FailoverHaStrategy.png)
+   
+#####  集群 cluster ，是如何将ha 策略与loadbalance结合起来的呢
+###### 什么是HA,高可用
+1. 在集群服务器架构中，当主服务器故障时，备份服务器能够自动接管主服务器的工作，
+   并及时切换过去，以实现对用户的不间断服务。这里我感觉它跟故障转移(failover)是一个意思，
+2. 简单的理解：当调用制作时，是直接返回结果，还是重试一定的次数来得到最终结果
+3. motan支持的HaStrategy只有两种：FailfastHatrategy和FailoverStrategy
+###### 什么是 LoadBalance
+1.  如何处理高并发带来的系统性能问题，最终大家都会使用负载均衡机制。
+   它是根据某种负载策略把请求分发到集群中的每一台服务器上，让整个服务器群来处理网站的请求。
+2. 简单的理解就是如何选择一个合理的请求服务端地址
+
+###### HA与 LoadBalance的关系
+1. ha向 lB发出请求，lb通过一定机制找到负载全蓝的服务端地址
+2. ha向这个服务端url发出网络请求，根据ha的策略。对请求的次数，时间待作出一定的处理
+   直接返回或者重试N次请求
+
+###### HA源代码分析
+```java
+public class FailfastHaStrategy<T> extends AbstractHaStrategy<T> {
+    @Override
+    public Response call(Request request, LoadBalance<T> loadBalance) {
+        Referer<T> refer = loadBalance.select(request);
+        // 找到一个refer call 
+        return refer.call(request);
+    }
+}
+// TODO 最多尝试N次
+public class FailoverHaStrategy<T> extends AbstractHaStrategy<T> {
+
+    protected ThreadLocal<List<Referer<T>>> referersHolder = new ThreadLocal<List<Referer<T>>>() {
+        @Override
+        protected java.util.List<com.weibo.api.motan.rpc.Referer<T>> initialValue() {
+            return new ArrayList<Referer<T>>();
+        }
+    };
+
+    @Override
+    public Response call(Request request, LoadBalance<T> loadBalance) {
+        List<Referer<T>> referers = selectReferers(request, loadBalance);
+        if (referers.isEmpty()) {
+            throw new MotanServiceException("xx");
+        }
+        URL refUrl = referers.get(0).getUrl();
+        // 先使用method的配置
+        int tryCount =   refUrl.getMethodParameter(request.getMethodName(), request.getParamtersDesc(), URLParamType.retries.getName(),    URLParamType.retries.getIntValue());
+        // 如果有问题，则设置为不重试
+        if (tryCount < 0) {
+            tryCount = 0;
+        }
+
+        for (int i = 0; i <= tryCount; i++) {
+            Referer<T> refer = referers.get(i % referers.size());
+            try {
+                request.setRetries(i);
+                return refer.call(request);
+            } catch (RuntimeException e) {
+            }
+        }
+    }
+
+    protected List<Referer<T>> selectReferers(Request request, LoadBalance<T> loadBalance) {
+        List<Referer<T>> referers = referersHolder.get();
+        referers.clear();
+        loadBalance.selectToHolder(request, referers);
+        return referers;
+    }
+
+}
+
+```
+
+###### LoadBalance 的实现分析  
+
+1. ActivieWegithLoadBalance 最少并发优先，怎么计算并发量？很简单，通过原子计数器即可
+```java
+
+@SpiMeta(name = "activeWeight")
+public class ActiveWeightLoadBalance<T> extends AbstractLoadBalance<T> {
+
+    @Override
+    protected Referer<T> doSelect(Request request) {
+        List<Referer<T>> referers = getReferers();
+        int refererSize = referers.size();
+        int startIndex = ThreadLocalRandom.current().nextInt(refererSize);
+        int currentCursor = 0;
+        int currentAvailableCursor = 0;
+        Referer<T> referer = null;
+
+        while (currentAvailableCursor < MAX_REFERER_COUNT && currentCursor < refererSize) {
+            Referer<T> temp = referers.get((startIndex + currentCursor) % refererSize);
+            currentCursor++;
+
+            if (!temp.isAvailable()) {
+                continue;
+            }
+
+            currentAvailableCursor++;
+
+            if (referer == null) {
+                referer = temp;
+            } else {
+                if (compare(referer, temp) > 0) {
+                    referer = temp;
+                }
+            }
+        }
+
+        return referer;
+    }
+
+    @Override
+    protected void doSelectToHolder(Request request, List<Referer<T>> refersHolder) {
+        List<Referer<T>> referers = getReferers();
+
+        int refererSize = referers.size();
+        int startIndex = ThreadLocalRandom.current().nextInt(refererSize);
+        int currentCursor = 0;
+        int currentAvailableCursor = 0;
+
+        while (currentAvailableCursor < MAX_REFERER_COUNT && currentCursor < refererSize) {
+            Referer<T> temp = referers.get((startIndex + currentCursor) % refererSize);
+            currentCursor++;
+
+            if (!temp.isAvailable()) {
+                continue;
+            }
+
+            currentAvailableCursor++;
+
+            refersHolder.add(temp);
+        }
+
+        Collections.sort(refersHolder, new LowActivePriorityComparator<T>());
+    }
+
+    private int compare(Referer<T> referer1, Referer<T> referer2) {
+        return referer1.activeRefererCount() - referer2.activeRefererCount();
+    }
+
+    static class LowActivePriorityComparator<T> implements Comparator<Referer<T>> {
+        @Override
+        public int compare(Referer<T> referer1, Referer<T> referer2) {
+            return referer1.activeRefererCount() - referer2.activeRefererCount();
+        }
+    }
+}
+```
+
+2. 问题来了，这里只看到 loadbalance#doSelect并没有看到，哪里将referer的权重变化
+    - 生成一个随机数，然后使用取余来获取一个referer ，然后将referer进行sort排序
+    - LowActivePriorityComparator 中比较的是 activeRefererCount()的值，那么这个值在lb中工没有看到变更 
+    - 由此怀疑，只能是在referer.call的时候，作的改变
+
+
+
+###### Refer如何控制使用次数 
+1. DefaultRpcReferer
+```java
+
+public abstract class AbstractReferer<T> extends AbstractNode implements Referer<T> {
+
+    protected Class<T> clz;
+    // todo 嘿嘿就在这里 
+    protected AtomicInteger activeRefererCount = new AtomicInteger(0);
+    protected URL serviceUrl;
+
+    @Override
+    public Response call(Request request) {
+        if (!isAvailable()) {
+        }
+        // TODO  ha.call(request,loadbalance)
+        // TODO 一旦被调用，则活动数量add ,实现则在具体类
+        // TODO 默认策略会将计数器 +1
+        incrActiveCount(request);
+        Response response = null;
+        try {
+            response = doCall(request);
+            return response;
+        } finally {
+            // TODO 释放activecount ,默认策略会将计数器-1
+            decrActiveCount(request, response);
+        }
+    }
+
+    @Override
+    public int activeRefererCount() {
+        return activeRefererCount.get();
+    }
+
+    protected void incrActiveCount(Request request) {
+        activeRefererCount.incrementAndGet();
+    }
+
+    protected void decrActiveCount(Request request, Response response) {
+        activeRefererCount.decrementAndGet();
+    }
+
+    protected abstract Response doCall(Request request);
+
+    @Override
+    public String desc() {
+        return "[" + this.getClass().getSimpleName() + "] url=" + url;
+    }
+
+    @Override
+    public URL getServiceUrl() {
+        return serviceUrl;
+    }
+
+}
+
+class DefaultRpcReferer<T> extends AbstractReferer<T> {
+        private Client client;
+        private EndpointFactory endpointFactory;
+
+        public DefaultRpcReferer(Class<T> clz, URL url, URL serviceUrl) {
+            super(clz, url, serviceUrl);
+            endpointFactory =
+                    ExtensionLoader.getExtensionLoader(EndpointFactory.class).getExtension(
+                            url.getParameter(URLParamType.endpointFactory.getName(), URLParamType.endpointFactory.getValue()));
+            client = endpointFactory.createClient(url);
+        }
+
+        @Override
+        protected Response doCall(Request request) {
+            // 为了能够实现跨group请求，需要使用server端的group。
+            request.setAttachment(URLParamType.group.getName(), serviceUrl.getGroup());
+            return client.request(request);
+        }
+
+        @Override
+        protected void decrActiveCount(Request request, Response response) {
+            if (response == null || !(response instanceof Future)) {
+                activeRefererCount.decrementAndGet();
+                return;
+            }
+            Future future = (Future) response;
+            future.addListener(new FutureListener() {
+                @Override
+                public void operationComplete(Future future) throws Exception {
+                    activeRefererCount.decrementAndGet();
+                }
+            });
+        }
+
+        @Override
+        protected boolean doInit() {
+            boolean result = client.open();
+            return result;
+        }
+    }
+```
+
 
 ***
 ***
