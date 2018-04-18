@@ -1827,7 +1827,7 @@ class DefaultRpcReferer<T> extends AbstractReferer<T> {
 
 
 ***
-***
+
 
 | 协议位	| 意义| 
  | ------- | ---- |
@@ -1841,6 +1841,97 @@ class DefaultRpcReferer<T> extends AbstractReferer<T> {
 
 
 
+## SPI 机制
+
+### 类加载机制 ：双亲选手
+```java
+public class Test {
+    public static void main(String[] args){
+         ClassLoader loader = TestClassLoader.class.getClassLoader();  
+        //获得加载ClassLoaderTest.class这个类的类加载器
+        while(loader != null) {
+            System.out.println(loader);
+            loader = loader.getParent();    //获得父类加载器的引用
+        }
+        System.out.println(loader);
+        // output >>>
+        // sun.misc.Launcher$AppClassLoader@7b7035c6
+        // sun.misc.Launcher$ExtClassLoader@3da997a
+        // null
+    }
+  }
+    
+  
+```
+
+1. 那么问题来了JDBC人驱动器接口定义是在java核心包中定义，而具体驱动实现是在mysql,oracle的第三方jar中提供
+是怎么做到的很。很明显这接口的与实现类是由不同的类加载器实现的，这似乎违背了前面所
+提到的parent委托机器。
+***
+2.为了解决这个矛盾 Java提供了一线程上下文的 thread classloader  
+ ` Thread.currentThread().getContextClassLoader().`
+
+### 什么是SIP 
+#### SPI  : Service Provider Interface
+java spi就是提供这样的一个机制：为某个接口寻找服务实现的机制。有点类似IOC的思想，
+就是将装配的控制权移到程序之外，在模块化设计中这个机制尤其重要。
+
+#### SPI 规范
+1. java spi的具体约定为:当服务的提供者，
+2. 提供了服务接口的一种实现之后，
+3. 在jar包的META-INF/services/目录里同时创建一个以服务接口命名的文件。
+4. 该文件里就是实现该服务接口的具体实现类。而当外部程序装配这个模块的时候，
+5. 能通过该jar包META-INF/services/里的配置文件找到具体的实现类名，并装载实例化，完成模块的注入。 
+6. 基于这样一个约定就能很好的找到服务接口的实现类，而不需要再代码里制定。
+ jdk提供服务实现查找的一个工具类：` java.util.ServiceLoader`
+ 
+    package my.xyz.spi;  
+    import java.util.List;  
+    public interface Search {  
+    public List serch(String keyword);  
+    }  
+     
+     package com.xyz.factory;  
+     import java.util.Iterator;  
+     import java.util.ServiceLoader;  
+     import my.xyz.spi.Search;  
+     public class SearchFactory {  
+         private SearchFactory() {  
+         }  
+         public static Search newSearch() {  
+             Search search = null;  
+             ServiceLoader<Search> serviceLoader = ServiceLoader.load(Search.class);  
+             Iterator<Search> searchs = serviceLoader.iterator();  
+             if (searchs.hasNext()) {  
+                 search = searchs.next();  
+             }  
+             return search;  
+         }  
+     }  
+     
+     
+     package my.xyz.test;  
+     import java.util.Iterator;  
+     import java.util.ServiceLoader;  
+     import com.xyz.factory.SearchFactory;  
+     import my.xyz.spi.Search;  
+     public class SearchTest {  
+         public static void main(String[] args) {  
+             Search search = SearchFactory.newSearch();  
+             search.serch("java spi test");  
+         }  
+     }  
+ 
+ 
+ 
+ 
+
+
+
+
+
+
+http://www.mamicode.com/info-detail-1328167.html
 
 
 
@@ -1855,10 +1946,7 @@ class DefaultRpcReferer<T> extends AbstractReferer<T> {
 
 
 
-
-
-
-
+ 
 
 
 

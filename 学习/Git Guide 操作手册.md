@@ -17,7 +17,10 @@
 
 1. IO ,操作系统
 2. Java NIO  Netty
- 
+3. TCP time_wait
+4. tcp/ip   滑动窗口，以太网
+5. HTTP 
+
 ##  Java并发
  
  
