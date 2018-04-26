@@ -112,10 +112,7 @@ volatile
          }
       }).start();
 
-   1. 程序顺序规则：一个线程中的每个操作，happens- before 于该线程中的任意后续操作。
-   2. 监视器锁规则：对一个监视器锁的解锁，happens- before 于随后对这个监视器锁的加锁。
-   3. volatile变量规则：对一个volatile域的写，happens-before 于任意后续对这个volatile域的读。
-   4. 传递性：如果A happens- before B，且B happens- before C，那么A happens- before C。
+   1. volatile变量规则：对一个volatile域的写，happens-before 于任意后续对这个volatile域的读。
     
 ### 3.2 指令重排序
    1. 编译器优化重排序：编译器在不改变单线程程序语义的前提下，可以重新安排语句的执行顺序。
@@ -165,7 +162,7 @@ volatile
 ```
   
   
-### 3.3 happen-before
+### 3.4 happen-before
  
 happens-before原则定义如下：
 
@@ -177,10 +174,11 @@ happens-before原则定义如下：
 
 1. 程序次序规则：一个线程内，按照代码顺序，书写在前面的操作先行发生于书写在后面的操作；
     > 怎么理解：其实就是想象只有一个单线程执行程序，所以的动作按照你程序的顺序执行
+       此时你不需要关心多线和，除非你在多个cpu cache间同步数据 那么一定会发生 volatile ,synchronized怕样的操作
 2. 锁定规则：一个unLock操作先行发生于后面对同一个锁额lock操作；
-   > 对象加锁： 先unlock，然后才能lock  
+    > 对象加锁： 先unlock，然后才能lock  
 3.  volatile变量规则：对一个变量的写操作先行发生于后面对这个变量的读操作；
-   > 某线程修改 volatile 变量，其他线程立马可以读取最新值 它标志着volatile保证了线程可见性
+    > 某线程修改 volatile 变量，其他线程立马可以读取最新值 它标志着volatile保证了线程可见性
 4. 传递规则：如果操作A先行发生于操作B，而操作B又先行发生于操作C，则可以得出操作A先行发生于操作C；
 5. 线程启动规则：Thread对象的start()方法先行发生于此线程的每个一个动作；
 6. 线程中断规则：对线程interrupt()方法的调用先行发生于被中断线程的代码检测到中断事件的发生；
@@ -189,9 +187,10 @@ happens-before原则定义如下：
 
 
 
+## 3 内存如何实现 在不同cache间传递数据 (略，我暂时还没有那个水平，哈哈)
 
-  
-  
+  Exchanger
+  AtomicReference
   
    
   
