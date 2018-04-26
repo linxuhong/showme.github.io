@@ -1,4 +1,4 @@
-volatile 
+mysql 使用tips
 ====
 # 一、基础规范
 
