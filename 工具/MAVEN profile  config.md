@@ -58,16 +58,16 @@
 + `nginx -s reload`
 +  `nginx.exe`
 
-#### 5. jd url与yhd代理url对应关系如下　
->请注意加精部分  /jd/api/  为yhd固定代码url前缀
+#### 5. xx url与yhd代理url对应关系如下　
+>请注意加精部分  /xx/api/  为yhd固定代码url前缀
   
-+ jd域名：  http://rankcore.m.jd.local/rankInfo?
++ jd域名：  http://rankcore.m.xx.local/rankInfo?
    +   {host}:/{**jd_path**}
    
 + 构造yhd代理域名
-    + http://detail.yhd.com/jd/api/rankInfo
+    + http://detail.bbb.com/xx/api/rankInfo
     + 代理域名path部分规则
-	  + {host}:**/jd/ap**i/{**jd_path**}
+	  + {host}:**/xx/ap**i/{**jd_path**}
 
 
 #### 6. AJAX请求改造 codes
@@ -81,7 +81,7 @@
 #### 7. 结果
 + Chrome中访问如下URL
      
-	>http://channel.yhd.com/jd/api/channel/rankInfo?body={%22cateId%22:%22655%22,%22provinceId%22:%221%22,%22time%22:%221DAY%22,%22rankId%22:%22rank3001%22}&clientVersion=6.2.0&build=38335&client=apple&d_brand=Xiaomi&d_model=RedmiNote2&osVersion=5.0.2&screen=1920*1080&partner=test&uuid=869043021004155-fc64bab32c82&area=12_904_905_50601&networkType=wifi&pin=txjjzyzqbx
+	>http://channel.bbb.com/xx/api/channel/rankInfo?body={%22cateId%22:%22655%22,%22provinceId%22:%221%22,%22time%22:%221DAY%22,%22rankId%22:%22rank3001%22}&clientVersion=6.2.0&build=38335&client=apple&d_brand=Xiaomi&d_model=RedmiNote2&osVersion=5.0.2&screen=1920*1080&partner=test&uuid=869043021004155-fc64bab32c82&area=12_904_905_50601&networkType=wifi&pin=txjjzyzqbx
      
 	
 + 效果截图
@@ -93,7 +93,7 @@
  
     | JD URL  | YHD URL  |
     | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
-    | http://rankcore.m.jd.local/rankInfo?body={%22cateId%22:%22655%22,%22provinceId%22:%221%22,%22time%22:%221DAY%22,%22rankId%22:%22rank3001%22}&clientVersion=6.2.0&build=38335&client=apple&d_brand=Xiaomi&d_model=RedmiNote2&osVersion=5.0.2&screen=1920*1080&partner=test&uuid=869043021004155-fc64bab32c82&area=12_904_905_50601&networkType=wifi&pin=txjjzyzqbx  | http://detail.yhd.com/jd/api/channel/rankInfo?body={%22cateId%22:%22655%22,%22provinceId%22:%221%22,%22time%22:%221DAY%22,%22rankId%22:%22rank3001%22}&clientVersion=6.2.0&build=38335&client=apple&d_brand=Xiaomi&d_model=RedmiNote2&osVersion=5.0.2&screen=1920*1080&partner=test&uuid=869043021004155-fc64bab32c82&area=12_904_905_50601&networkType=wifi&pin=txjjzyzqbx  |
-    | http://dynamic.item.jd.com/info/3846673.html  | http://detail.yhd.com/jd/api/detail/info/3846673.html  |
+    | http://rankcore.m.xx.local/rankInfo?body={%22cateId%22:%22655%22,%22provinceId%22:%221%22,%22time%22:%221DAY%22,%22rankId%22:%22rank3001%22}&clientVersion=6.2.0&build=38335&client=apple&d_brand=Xiaomi&d_model=RedmiNote2&osVersion=5.0.2&screen=1920*1080&partner=test&uuid=869043021004155-fc64bab32c82&area=12_904_905_50601&networkType=wifi&pin=txjjzyzqbx  | http://detail.bbb.com/xx/api/channel/rankInfo?body={%22cateId%22:%22655%22,%22provinceId%22:%221%22,%22time%22:%221DAY%22,%22rankId%22:%22rank3001%22}&clientVersion=6.2.0&build=38335&client=apple&d_brand=Xiaomi&d_model=RedmiNote2&osVersion=5.0.2&screen=1920*1080&partner=test&uuid=869043021004155-fc64bab32c82&area=12_904_905_50601&networkType=wifi&pin=txjjzyzqbx  |
+    | http://dynamic.item.xx.com/info/3846673.html  | http://detail.bbb.com/xx/api/detail/info/3846673.html  |
 
 ### 结束
