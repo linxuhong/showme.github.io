@@ -15,7 +15,10 @@ new HashMap():
 >    threshold 的值="容量*加载因子"，当HashMap中存储数据的数量达到threshold时，就需要将HashMap的容量加倍。
 　　loadFactor就是加载因子。 
 　　modCount是用来实现fail-fast机制的。
+
+
  ![a](map.png)
+ 
  
     public HashMap() {
           // DEFAULT_INITIAL_CAPACITY =16 , DEFAULT_LOAD_FACTOR = 0.75
