@@ -129,7 +129,7 @@ ndexFor方法其实主要是将hash生成的整型转换成链表数组中的下
          return null;
      }
  
-引出一个话题 为什么Override了  equal方法，也要override方法
+引出一个话题 为什么Override了  equal方法，也要Override方法
 java中规定  一个对象如果 equals相等，那么 其 hashcode也必需相等，而正常情况下 hashcode()是
 Object的一个native方法，能于同一个object的不同实例，正常情况下，hashcode返回的值是不相同 的
 
