@@ -47,13 +47,15 @@ maxId  uid address
 ~~~mysql
 
 select id, uid, address
-    from ( select id, uid, address
-            from mytable
-			group by uid
-            order by id desc
-		 ) a
-     group by uid 
-	 having count(id) = 1
+from 
+( 
+    select id, uid, address
+    from mytable
+    group by uid
+    order by id desc
+  ) a
+ group by uid 
+having count(id) = 1
 	 
 ~~~
 
@@ -70,10 +72,7 @@ select id, uid, address
       from mytable  group by uid
   
   )
-   
-  
   order by user_id;
- 
  
  
 ~~~
@@ -83,14 +82,14 @@ select id, uid, address
 
 ~~~mysql
 
-	 select a.id, b.uid, b.address
-     from 
-	 (select max(id) id, uid
-          from mytable
-         group by uid
-     ) a
-    join mytable b
-    on a.id = b.id
+ select a.id, b.uid, b.address
+ from 
+ (select max(id) id, uid
+      from mytable
+     group by uid
+ ) a
+join mytable b
+on a.id = b.id
     
 ~~~
 
