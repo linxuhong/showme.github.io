@@ -1,6 +1,6 @@
 线和 wait notify notifyAll  synchronized
 ====
-# wai notify 
+# wait notify 
 一段最笑意的wait notify 代码
 
  ~~~java
