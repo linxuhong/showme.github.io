@@ -342,18 +342,18 @@ public class Geeneric {
 ### 4 sleep()和wait() 区别
 
  
-1.Call on:
-    + wait():  当前普通java对象方法
-    + sleep(): 当前纯种休眠指定时间 后执行。
-2. 同步 :
-    + wait():  通常情况下存在多线程同步的时候使用wait'
-    + sleep(): 等待条件达到时继续执行
-3. 持有锁的情况:
-    + wait():  释放当前纯种持 有的锁
-    + sleep(): 持有锁
+1. Call on:
+        + wait():  当前普通java对象方法
+        + sleep(): 当前纯种休眠指定时间 后执行。
+2.  同步 :
+        + wait():  通常情况下存在多线程同步的时候使用wait'
+        + sleep(): 等待条件达到时继续执行
+3.  持有锁的情况:
+        + wait():  释放当前纯种持 有的锁
+        + sleep(): 持有锁
 4.  唤醒条件:
-    + wait(): 对象调用notify或者notifiall
-    + sleep(): 时间到了或者被中断
+        + wait(): 对象调用notify或者notifiall
+        + sleep(): 时间到了或者被中断
 5.  entryset witset ,notify notifyall唤醒的范围 ？？
 
 
@@ -368,6 +368,7 @@ public class Geeneric {
        - 该变量没有包含在具有其他变量的不变式中
    + 使用场景 ：
        + 模式 #1：状态标志
+       
          volatile boolean shutdownRequested;
           
          public void shutdown() { shutdownRequested = true; }
@@ -379,7 +380,7 @@ public class Geeneric {
          }
        
        - 模式 #2：一次性安全发布（one-time safe publication）
-         ublic class BackgroundFloobleLoader {
+         public class BackgroundFloobleLoader {
              public volatile Flooble theFlooble;
           
              public void initInBackground() {
@@ -415,7 +416,7 @@ public class Geeneric {
 
 ### 6 同学方法 同步代码块
 1. 同步的是什么
-   - 同步方法：表态方法就是同步在 class好u 普通方法就是当前实例 this
+   - 同步方法：表态方法就是同步在 class 普通方法就是当前实例 this
    - 同步代码块：任何非null的对象 
 2. 为什么要出现同步代码块
 
@@ -447,7 +448,7 @@ public class Geeneric {
          - 如果更新成功，则执行步骤（3），
          - 否则执行步骤（4）。
    - （4）如果这个更新动作成功了，那么这个线程就拥有了该对象的锁，并且对象Mark Word的锁标志位设置为“00”，即表示此对象处于轻量级锁定状态，这时候线程堆栈与对象头的状态如图2.2所示。
-   -  5） 如果这个更新操作失败了，虚拟机首先会检查对象的Mark Word是否指向当前线程的栈帧，如果是就说明当前线程已经拥有了这个对象的锁，那就可以直接进入同步块继续执行。否则说明多个线程竞争锁，轻量级锁就要膨胀为重量级锁，锁标志的状态值变为“10”，Mark Word中存储的就是指向重量级锁（互斥量）的指针，后面等待锁的线程也要进入阻塞状态。 
+   - （5） 如果这个更新操作失败了，虚拟机首先会检查对象的Mark Word是否指向当前线程的栈帧，如果是就说明当前线程已经拥有了这个对象的锁，那就可以直接进入同步块继续执行。否则说明多个线程竞争锁，轻量级锁就要膨胀为重量级锁，锁标志的状态值变为“10”，Mark Word中存储的就是指向重量级锁（互斥量）的指针，后面等待锁的线程也要进入阻塞状态。 
          而当前线程便尝试使用自旋来获取锁，自旋就是为了不让线程阻塞，而采用循环去获取锁的过程。
 
 5、偏向锁获取过程：
@@ -461,9 +462,9 @@ public class Geeneric {
 　　-（4）如果CAS获取偏向锁失败，则表示有竞争。当到达全局安全点（safepoint）时获得偏向锁的线程被挂起，偏向锁升级为轻量级锁，然后被阻塞在安全点的线程继续往下执行同步代码。
 
 6. 锁优化
-   - 1、适应性自旋（Adaptive Spinning）
-   - 2、锁粗化（Lock Coarsening）
-   - 3. 锁消除（Lock Elimination）
+   - 1 适应性自旋（Adaptive Spinning）
+   - 2 锁粗化（Lock Coarsening）
+   - 3 锁消除（Lock Elimination）
    
 7. 比较
 
@@ -479,7 +480,7 @@ public class Geeneric {
 ### 8 无锁化编程的途径
 1. 什么是无锁
   
-  - 无锁，英文一般翻译为lock-free，是利用处理器的一些特殊的原子指令来避免传统并行设计中对锁的使用
+   - 无锁，英文一般翻译为lock-free，是利用处理器的一些特殊的原子指令来避免传统并行设计中对锁的使用
 
 2. 为什么要无锁?
    - 首先是性能考虑。
@@ -494,7 +495,7 @@ public class Geeneric {
    - 比较 A 与 V 是否相等。（比较）
    - 如果比较相等，将 B 写入 V。（交换）
    - 返回操作是否成功。
-4. cas
+4. cas  存在 AB的总是ß
      ```java
      class AtomicInteger {
        int  incrementAndGet() {
@@ -510,13 +511,13 @@ public class Geeneric {
      }
      
      ```
-
      
- 
- 
+    - CAS需要在操作值的时候检查下值有没有发生变化，如果没有发生变化则更新，但是如果一个值原来是A，变成了B，又变成了A，
+    - 那么使用CAS进行检查时会发现它的值没有发生变化，但是实际上却变化了。这就是CAS的ABA问题
 
+    
  
-
+  
 
 
 # License
@@ -524,6 +525,7 @@ public class Geeneric {
 * [Wiki]()
 
 []:https://maven.apache.org
+
 
 
 
