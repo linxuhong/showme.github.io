@@ -172,13 +172,13 @@ public class Geeneric {
 
 ### 3。 java io   字条流，字节流
 
-### 字节与字
+#### 字节与字
 
 1 byte = 8 bit
 1 char = 2 byte = 16 bit (Java默认UTF-16编码)
 
 
-### java io
+#### java io
 
 1. 字节流继承于InputStream    OutputStream
 
@@ -339,7 +339,7 @@ public class Geeneric {
 
 
 
-### sleep()和wait() 区别
+### 4 sleep()和wait() 区别
 
  
 1.Call on:
@@ -357,7 +357,7 @@ public class Geeneric {
 5.  entryset witset ,notify notifyall唤醒的范围 ？？
 
 
-### synchronized和volatile
+### 5 synchronized和volatile
 
 1. volatile : 
    + 可变的易变的。锁的我互斥和可见性，这样一次就只能有一个线程个性共享数据
@@ -413,44 +413,117 @@ public class Geeneric {
    
 
 
-### 同学方法 同步代码块
+### 6 同学方法 同步代码块
 1. 同步的是什么
    - 同步方法：表态方法就是同步在 class好u 普通方法就是当前实例 this
    - 同步代码块：任何非null的对象 
 2. 为什么要出现同步代码块
 
 
-### Lock和synchronzied区别
+### 7 Lock和synchronzied区别
 
 
 
 
 
-### Java中偏向锁，自旋锁，轻量级锁，和重量级锁
-1. 重量级锁：通常情况 下批的是 syn书法家d
+### 8 Java中偏向锁，自旋锁，轻量级锁，和重量级锁
+1. 锁的类型： 锁的状态总共有四种：无锁状态、偏向锁、轻量级锁和重量级锁。随着锁的竞争
+> 重量级锁通常是 synchronized 依赖于操作系统的mutex lock
 
+2. 偏向锁 ： -XX:-UseBiasedLocking来禁用偏向锁。锁的状态保存在对象的头文件中，以32位的JDK为例：
 
+3. 轻量级锁
+   - 轻量级锁并不是用来代替重量级锁的，它的本意是在没有多线程竞争的前提下，
+     - 减少传统的重量级锁使用产生的性能消耗。在解释轻量级锁的执行过程之前，
+     - 先明白一点，轻量级锁所适应的场景是线程交替执行同步块的情况，
+     - 如果存在同一时间访问同一锁的情况，就会导致轻量级锁膨胀为重量级锁。
+4. 轻量级锁
+   - （1）在代码进入同步块的时候，
+         - 如果同步对象锁状态为无锁状态（锁标志位为“01”状态，是否为偏向锁为“0”），
+         - 虚拟机首先将在当前线程的栈帧中建立一个名为锁记录（Lock Record）的空间，用于存储锁对象目前的Mark Word的拷贝，官方称之为 Displaced Mark Word。
+          
+   - （2）拷贝对象头中的Mark Word复制到锁记录中。
+   = （3）拷贝成功后，虚拟机将使用CAS操作尝试将对象的Mark Word更新为指向Lock Record的指针，并将Lock record里的owner指针指向object mark word。
+         - 如果更新成功，则执行步骤（3），
+         - 否则执行步骤（4）。
+   - （4）如果这个更新动作成功了，那么这个线程就拥有了该对象的锁，并且对象Mark Word的锁标志位设置为“00”，即表示此对象处于轻量级锁定状态，这时候线程堆栈与对象头的状态如图2.2所示。
+   -  5） 如果这个更新操作失败了，虚拟机首先会检查对象的Mark Word是否指向当前线程的栈帧，如果是就说明当前线程已经拥有了这个对象的锁，那就可以直接进入同步块继续执行。否则说明多个线程竞争锁，轻量级锁就要膨胀为重量级锁，锁标志的状态值变为“10”，Mark Word中存储的就是指向重量级锁（互斥量）的指针，后面等待锁的线程也要进入阻塞状态。 
+         而当前线程便尝试使用自旋来获取锁，自旋就是为了不让线程阻塞，而采用循环去获取锁的过程。
 
-继续...
+5、偏向锁获取过程：
+
+　　-（1）访问Mark Word中偏向锁的标识是否设置成1，锁标志位是否为01——确认为可偏向状态。
+
+　　-（2）如果为可偏向状态，则测试线程ID是否指向当前线程，如果是，进入步骤（5），否则进入步骤（3）。
+
+　　-（3）如果线程ID并未指向当前线程，则通过CAS操作竞争锁。如果竞争成功，则将Mark Word中线程ID设置为当前线程ID，然后执行（5）；如果竞争失败，执行（4）。
+
+　　-（4）如果CAS获取偏向锁失败，则表示有竞争。当到达全局安全点（safepoint）时获得偏向锁的线程被挂起，偏向锁升级为轻量级锁，然后被阻塞在安全点的线程继续往下执行同步代码。
+
+6. 锁优化
+   - 1、适应性自旋（Adaptive Spinning）
+   - 2、锁粗化（Lock Coarsening）
+   - 3. 锁消除（Lock Elimination）
+   
+7. 比较
+
+| 锁   |      优点      |  缺点 |   适用场景   |      |
+|----------|:-------------:|------:|------:------:
+| 偏向锁   |  加锁和解锁不需要额外的消耗，和执行非同步方法比仅存在纳秒级的差距 | 如果线程间存在锁竞争，会带来额外的锁撤销的消耗。 |适用于只有一个线程访问同步块场景 |  
+| 轻量级锁 |    竞争的线程不会阻塞，提高了程序的响应速度。   |   如果始终得不到锁竞争的线程使用自旋会消耗CPU |追求响应时间。同步块执行速度非常快 | 
+| 重量级锁 | 线程竞争不使用自旋，不会消耗CPU |    线程阻塞，响应时间缓慢 |追求吞吐量 同步块执行速度较长 | 
+ 
+简书著作权归作者所有，任何形式的转载都请联系作者获得授权并注明出处。
+
+    
+### 8 无锁化编程的途径
+1. 什么是无锁
+  
+  - 无锁，英文一般翻译为lock-free，是利用处理器的一些特殊的原子指令来避免传统并行设计中对锁的使用
+
+2. 为什么要无锁?
+   - 首先是性能考虑。
+     - 通信项目一般对性能有极致的追求，这是我们使用无锁的重要原因。当然，无锁算法如果实现的不好，性能可能还不如使用锁，所以我们选择比较擅长的数据结构和算法进行lock-free实现，比如Queue，对于比较复杂的数据结构和算法我们通过lock来控制，比如Map（虽然我们实现了无锁Hash，但是大小是限定的，而Map是大小不限定的）。
+     - 对于性能数据，后续文章会给出无锁和有锁的对比。
+   - 其次是避免锁的使用引起的错误和问题。
+     - 死锁(dead lock)：两个以上线程互相等待
+     - 锁护送(lock convoy)：多个同优先级的线程反复竞争同一个锁，抢占锁失败后强制上下文切换，引起性能下降
+     - 优先级反转(priority inversion)：低优先级线程拥有锁时被中优先级的线程抢占，而高优先级的线程因为申请不到锁被阻塞
+
+3. 系统层面支持
+   - 比较 A 与 V 是否相等。（比较）
+   - 如果比较相等，将 B 写入 V。（交换）
+   - 返回操作是否成功。
+4. cas
+     ```java
+     class AtomicInteger {
+       int  incrementAndGet() {
+           public final int getAndAddInt(Object var1, long var2, int var4) {
+               int var5;
+               do {
+                   var5 = this.getIntVolatile(var1, var2);
+               } while(!this.compareAndSwapInt(var1, var2, var5, var5 + var4));
+       
+               return var5;
+            }
+       }
+     }
+     
+     ```
 
      
  
-[Motan-PHP](https://github.com/weibocom/motan-php) is PHP client can interactive with Motan server directly or through Motan-go agent.
-
-[Motan-openresty](https://github.com/weibocom/motan-openresty) is a Lua(Luajit) implementation based on [Openresty](http://openresty.org)
  
-* [Wiki](https://github.com/weibocom/motan/wiki)
-* [Wiki(中文)](https://github.com/weibocom/motan/wiki/zh_overview)
 
-# Contributors
+ 
 
-* maijunsheng([@maijunsheng](https://github.com/maijunsheng))
+
 
 # License
 
-Motan is released under the [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
+* [Wiki]()
 
-[maven]:https://maven.apache.org
+[]:https://maven.apache.org
 
 
 
