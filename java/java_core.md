@@ -518,6 +518,61 @@ public class Geeneric {
     
  
   
+### Java线程池corePoolSize, maximuPoolSize, workQueue的含义
+
+1. 为什么要用线程池
+
+   - new Thread的弊端：
+        
+       - 每次new Thread新建对象性能差。
+       - 线程缺乏统一管理，可能无限制新建线程，相互之间竞争，及可能占用过多系统资源导致死机或oom。
+       - 缺乏更多功能，如定时执行、定期执行、线程中断。
+       
+   - 线程池好处
+       - 重用存在的线程，减少对象创建、消亡的开销，性能佳。
+       - 可有效控制最大并发线程数，提高系统资源的使用率，同时避免过多资源竞争，避免堵塞。
+       - 提供定时执行、定期执行、单线程、并发数控制等功能
+2. java core中线程池的介绍：Java通过Executors提供四种线程池：
+   
+   
+   - newCachedThreadPool创建一个可缓存线程池，如果线程池长度超过处理需要，可灵活回收空闲线程，若无可回收，则新建线程。
+   
+   - newFixedThreadPool 创建一个定长线程池，可控制线程最大并发数，超出的线程会在队列中等待。
+   
+   - newScheduledThreadPool 创建一个定长线程池，支持定时及周期性任务执行。
+   
+   - newSingleThreadExecutor 创建一个单线程化的线程池，它只会用唯一的工作线程来执行任务，保证所有任务按照指定顺序(FIFO, LIFO, 优先级)执行。
+
+3，能用作法：一般需要根据任务的类型来配置线程池大小
+    
+   - 如果是CPU密集型任务，就需要尽量压榨CPU，参考值可以设为  cpu核数+1
+   - 如果是IO密集型任务，参考值可以设置为2*cpu核数
+   >> 当然，这只是一个参考值，具体的设置还需要根据实际情况进行调整，比如可以先将线程池大小设置为参考值，再观察任务运行情况和系统负载、资源利用率来进行适当调整。
+
+4. 关闭线程池
+   - 我们知道如果使用shutdownNow()方法终止线程池的时候，有可能会抛出异常，
+   - 而且他会将那些已添加到队列中的任务抛弃。
+   - 所以我们一般会使用shutdown()方法来终止线程池。
+     - 但是只使用该方法的话，我们没办法办法知道线程池是否已经被终止了，
+     - 比如，有个任务阻塞了，那就会导致线程池关闭不了。
+   - 所以我们最好在调用了shutdown（）方法后再调用awaitTermination()方法来查看线程池关闭的状态，注意，该方法只是用来查看线程池关闭的状态，并不能完成终止线程的任务。
+
+5. 工程队列与线程池的关系
+   
+   - 构造方法：ThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue, ThreadFactory threadFactory, RejectedExecutionHandler handler)
+   
+       - corePoolSize：核心线程数即一直保留在线程池中的线程数量，即使处于闲置状态也不会被销毁。要设置 allowCoreThreadTimeOut 为 true，才会被销毁。
+       - maximumPoolSize：线程池中允许存在的最大线程数
+       - keepAliveTime：非核心线程允许的最大闲置时间，超过这个时间就会本地销毁。
+       - workQueue：用来存放任务的队列。
+   
+   
+   - 工作队列BlockingQueue的存取策略：
+       - 当工作线程数量小于corePoolSize时，新提交的任务总是会由新创建的工作线程执行，不入队列
+       - 当工作线程数量大于corePoolSize，如果工作队列没满，新提交的任务就入队列
+       - 当工作线程数量大于corePoolSize，小于MaximumPoolSize时，如果工作队列满了，新提交的任务就交给新创建的工作线程，不入队列
+       - 当工作线程数量大于MaximumPoolSize，并且工作队列满了，那么新提交的任务会被拒绝执行。具体看采用何种拒绝策略
+   
 
 
 # License
