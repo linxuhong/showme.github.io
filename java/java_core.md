@@ -659,6 +659,150 @@ public class Geeneric {
     - 以上五种情况被称作类的五种主动引用，除此之外的任何情况都被相应地叫做被动引用。以下是集中常见的且容易迷惑人心智的被动引用的示例：
 
 
+### 克隆
+
+1. Cloneable 实现这个接口，虽然啥也不做！如果不实现，则直接报错。
+2. Teacher 克隆后，其中的 teacher成员，与原始对象指向的是同一个 ??? 
+
+    ```java
+    public class Clone {
+        public static void main(String[] args) throws CloneNotSupportedException {
+            Student p = new Student();
+            p.setId("111");
+            Teacher t = new Teacher();
+            t.setId("----00000----");
+    
+            p.setTeacher(t);
+            Student target = (Student) p.clone();
+    
+            // output  111
+            System.out.println(target.getId());
+    
+            // output  ----00000----
+            System.out.println(target.getTeacher().getId());
+    
+            // true
+            System.out.println(p.getTeacher() == target.getTeacher());
+        }
+    }
+    
+ 
+    class Teacher {
+        public String getName() {  return name; }
+        public void setName(String name) {     this.name = name; }
+        public String getId() {  return id; }
+        public void setId(String id) {    this.id = id; }
+    
+        private String name;
+        private String id;
+    }
+    
+    class Student implements Cloneable {
+    
+        public Teacher getTeacher() { return teacher; }
+        public void setTeacher(Teacher teacher) {  this.teacher = teacher; }
+        public String getName() { return name;  }
+        public void setName(String name) { this.name = name; }
+        public String getId() { return id; }
+        public void setId(String id) { this.id = id;}
+    
+        private String name;
+        private String id;
+        private Teacher teacher;
+    
+        public Object clone() throws CloneNotSupportedException {
+            return super.clone();
+        }
+    }
+    
+    
+    ```
+### 锁 （相对悲观锁而言，乐观锁机制采取了更加宽松的加锁机制）
+
+。
+1. 悲观锁大多数情况下依靠数据库的锁机制实现，以保证操作最大程度的独占性。但随之而来的就是数据库性能的大量开销，特别是对长事务而言，这样的开销往往无法承受。
+2. 而乐观锁机制在一定程度上解决了这个问题。乐观锁，大多是基于数据版本（ Version ）记录机制实现。
+   > 何谓数据版本？即为数据增加一个版本标识，在基于数据库表的版本解决方案中，一般是通过为数据库表增加一个 “version” 字段来实现。
+     读取出数据时，将此版本号一同读出，之后更新时，对此版本号加一。此时，将提交数据的版本数据与数据库表对应记录的当前版本信息进行比对，
+     如果提交的数据版本号大于数据库表当前版本号，则予以更新，否则认为是过期数据。
+
+
+3. 在InnoDB中，会在每行数据后添加两个额外的隐藏的值来实现MVCC。
+   - 一个值记录这行数据何时被创建
+   - 一个值记录这行数据何时过期（或者被删除） 
+   - 在实际操作中，存储的并不是时间，而是事务的版本号，每开启一个新事务，事务的版本号就会递增。 在可重读Repeatable reads事务隔离级别下：
+
+     - SELECT时，读取创建版本号<=当前事务版本号，删除版本号为空或>当前事务版本号。
+     - INSERT时，保存当前事务版本号为行的创建版本号
+     - DELETE时，保存当前事务版本号为行的删除版本号
+     - UPDATE时，插入一条新纪录，保存当前事务版本号为行创建版本号，同时保存当前事务版本号到原来删除的行
+
+     > 通过MVCC，虽然每行记录都需要额外的存储空间，更多的行检查工作以及一些额外的维护工作，但可以减少锁的使用，大多数读操作都不用加锁，读数据操作很简单，性能很好，并且也能保证只会读取到符合标准的行，也只锁住必要行。
+
+4. 如何避免
+
+   - 以固定的顺序访问表和行。简单方法是对某一列先排序，后执行，这样就避免了交叉等待锁的情形。
+   - 大事务拆小。大事务更倾向于死锁，如果业务允许，将大事务拆小。
+   - 在同一个事务中，尽可能做到一次锁定所需要的所有资源，减少死锁概率。
+   - 降低隔离级别。如果业务允许，将隔离级别调低也是较好的选择，比如将隔离级别从RR调整为RC，可以避免掉很多因为gap锁造成的死锁。
+   - 为表添加合理的索引。可以看到如果不走索引将会为表的每一行记录添加上锁，死锁的概率大大增大。
+
+5. 分析
+   - show processlist; #查看正在执行的sql （show full processlist;查看全部sql）
+
+   - mysql> kill id #杀死sql进程；
+   - 如果进程太多找不到，就重启mysql
+    - /ect/init.d/mysql restart
+    - 或/ect/init.d/mysql stop（如果关不掉就直接kill -9 进程id）  再/ect/init.d/mysql start
+   - mysql日志文件是否保存死锁日志：
+     - 常用目录：/var/log/mysqld.log；（该目录还有其它相关日志文件就都看看）
+
+
+5. 不周情况下的锁级别
+   - 在RR级别中，通过MVCC机制，虽然让数据变得可重复读，但我们读到的数据可能是历史数据，是不及时的数据，不是数据库当前的数据！这在一些对于数据的时效特别敏感的业务中，就很可能出问题。
+   - 对于这种读取历史数据的方式，我们叫它快照读 (snapshot read)，而读取数据库当前版本数据的方式，叫当前读 (current read)。很显然，在MVCC中：
+
+     - 快照读：就是select
+      > select * from table ....;
+     
+     - 当前读：特殊的读操作，插入/更新/删除操作，属于当前读，处理的都是当前的数据，需要加锁。
+       - select * from table where ? lock in share mode;
+       - select * from table where ? for update;
+       - insert;
+       - update;
+       - delete;
+
+### SSl
+
+
+### java程序性能优化
+
+
+### jps
+
+1. jps功能
+
+  jps [options] [hostid]  
+  如果不指定hostid就默认为当前主机或服务器。
+  
+  命令行参数选项说明如下：
+  
+  -q 不输出类名、Jar名和传入main方法的参数  
+  -m 输出传入main方法的参数  
+  -l 输出main类或Jar的全限名  
+  -v 输出传入JVM的参数  
+  
+  $ jps -ml  
+  
+  
+  jstack
+  jstack主要用来查看某个Java进程内的线程堆栈信息。语法格式如下
+  
+  ps -ef | grep wordcount | grep -v grep  
+  ps -Lfp 2860 
+  
+  
+ 
 # License
 
 * [Wiki]()
