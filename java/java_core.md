@@ -802,12 +802,150 @@ public class Geeneric {
   ps -Lfp 2860 
   
   
+### 代理
+
+1 静态代理  ：暂时不讨论
+2 动态代理
+  - 接口类
+  - 业务类，实现接口
+  - InvocationHandler实现类
+  - Proxy.newProxyInstance生成 一个接口类的子类，并且实现业务接口类，
+    - 该动态生成的代理类，会实现每个业务接口方法，
+    - 代理类通过反射来统一代码invoke方法来实现对业务实现类的代理与加持。
+  - 其实本质就是根据业务接口的metadata，生成class的二进制数据，写入内存中
+    - ProxyGenerator.generateProxy 这个是生成 字节能码的关键类。
+    - 我debug了一下，发现代理类的包与，接口在同一个包下面。（目前接口与实现灰在同个）
+3. 到了最后 还是要对jvm class 字节码要熟悉。spring的aop依旧如此，只不过是用了相应 的框架来实现
+
+   ```java
+    public class TestProxy {
+        public static void main(String[] args) throws IOException {
+            Dynamic proxy = new Dynamic();
+            IBiz biz = (IBiz) proxy.bind(new BizImp());
+            String rs = biz.doBiz("aa");
+            System.out.println(rs);
+    
+            // Proxy.newProxyInstance 究竟是啥 内容
+            byte[] proxyClass = ProxyGenerator.generateProxyClass(biz.getClass().getSimpleName(), biz.getClass().getInterfaces());
+    
+            // 我们将字节码，保存到 本地，然后反编译查看
+            FileOutputStream outputStream = new FileOutputStream(new File("$Proxy0.class"));
+            outputStream.write(proxyClass);
+            outputStream.flush();
+            outputStream.close();
+    
+        }
+    }
+    
+    
+    class Dynamic implements InvocationHandler {
+        // 目标对象
+        private Object target;
+    
+        public Object bind(Object delegate) {
+            this.target = delegate;
+            return Proxy.newProxyInstance(delegate.getClass().getClassLoader(), delegate.getClass().getInterfaces(), this);
+        }
+    
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            System.out.println("--begin---");
+            Object rs = method.invoke(target, args);
+            System.out.println("---end----");
+            return rs;
+        }
+    }
+    
+    
+    interface IBiz {
+        String doBiz(String id);
+    }
  
+    class BizImp implements IBiz {
+        @Override
+        public String doBiz(String id) {
+            return " " + id;
+        }
+    }
+    
+    
+    // 运行时生成 的中间代理类
+    public final class $Proxy0 extends Proxy implements IBiz {
+            private static Method m1;
+            private static Method m3;
+            private static Method m2;
+            private static Method m0;
+        
+            // invoke handle 实际作为代理类的构造参数
+            public $Proxy0(InvocationHandler var1)    {
+                super(var1);
+            }
+        
+            public final String doBiz(String var1)    {
+                // 看到了么 ，这里通过invoke来调用i invoke handle的代理类
+                return (String)super.h.invoke(this, m3, new Object[]{var1});
+            }
+       
+            static {
+                try {
+                    m1 = Class.forName("java.lang.Object").getMethod("equals", Class.forName("java.lang.Object"));
+                    m3 = Class.forName("http.aop.IBiz").getMethod("doBiz", Class.forName("java.lang.String"));
+                    m2 = Class.forName("java.lang.Object").getMethod("toString");
+                    m0 = Class.forName("java.lang.Object").getMethod("hashCode");
+                } catch (NoSuchMethodException var2) {
+                    throw new NoSuchMethodError(var2.getMessage());
+                } catch (ClassNotFoundException var3) {
+                    throw new NoClassDefFoundError(var3.getMessage());
+                }
+            }
+        }
+
+   ```
+ 
+     
+### spring aop    
+     
+ 
+     
+      
+     
+     
+     
+     
+     
+
+
+###    j   v  m 
+
+1. jps -m -l
+
+2. top -hp 32512 
+3. ps -mp 32512 -o THREAD,tid,time 
+ 
+4. ps -Lfp pid   
+5. ps -mp pid -o THREAD, tid, time
+6. top -Hp pid
+
+
+ 
+7. printf "%x\n" 32616   
+
+8. jstack 32512|grep 7f68
+
+9. jstat -gcutil 32512 
+     
+     
+     
 # License
 
 * [Wiki]()
 
 []:https://maven.apache.org
+
+
+
+
+
 
 
 
