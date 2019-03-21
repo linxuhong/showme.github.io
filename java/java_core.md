@@ -903,37 +903,8 @@ public class Geeneric {
    ```
  
      
-### spring aop    
-     
+### java class
  
-     
-      
-     
-     
-     
-     
-     
-
-
-###    j   v  m 
-
-1. jps -m -l
-
-2. top -hp 32512 
-3. ps -mp 32512 -o THREAD,tid,time 
- 
-4. ps -Lfp pid   
-5. ps -mp pid -o THREAD, tid, time
-6. top -Hp pid
-
-
- 
-7. printf "%x\n" 32616   
-
-8. jstack 32512|grep 7f68
-
-9. jstat -gcutil 32512 
-     
      
      
 # License
