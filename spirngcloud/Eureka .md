@@ -1,7 +1,7 @@
-#### Eureka 
+#### Eureka 系列
 
 
-### Eureka介绍。
+### 初识 Eureka介绍。
 
 Eureka是Netflix开发的服务发现框架，本身是一个基于REST的服务，
 主要用于定位运行在AWS域中的中间层服务，以达到负载均衡和中间层服务故障转移的目的。
@@ -11,7 +11,7 @@ SpringCloud将它集成在其子项目spring-cloud-netflix中，
 
 > 简单理解 上 Eureka有点相当于rpc中的服务注册中心功能
 
-### 1 Eureka  server 单机配置
+###  Eureka  server 单机配置
 
 1.   程序
  
@@ -146,26 +146,38 @@ application-server3.yml
 
 
 
-# 结束  
+### 注册一个服务代码如下
 
- 
+  ```java
+        
+    import org.springframework.boot.SpringApplication;
+    import org.springframework.boot.autoconfigure.SpringBootApplication;
+    import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;
+    
+    @SpringBootApplication
+    @EnableEurekaServer
+    public class MagicCloudApplication {
+    
+        public static void main(String[] args) {
+            SpringApplication.run(MagicCloudApplication.class, args);
+        }
+    
+    }
 
 
+      
+``` 
+### 查看服务
+
+1. 访问 server1:9998
+
+Instance Info
+Name	Value
+ipAddr	192.168.0.109
+status	UP
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+![1](see_servcie.png)
 
 
 
