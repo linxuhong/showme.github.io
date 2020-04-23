@@ -50,8 +50,9 @@
      
      SpringBoot-Learning-1.0-SNAPSHOT.jar
      
-     
-   ![下载包](8.png)
+     打包完成，我们需要的最终输出是什么？在此处配置
+
+![下载包](8.png)
    
    这个时候就可以知道第 5步中归档成品文件的名字了 `target\SpringBoot-Learning-1.0-SNAPSHOT.jar`
 
