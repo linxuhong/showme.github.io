@@ -13,7 +13,7 @@
 
 
 ### 3 . pre step
--    
+-   配置一段简单的脚本。输出job名字 
 ```shell script
   echo " ************ begin to build project >>>>>>>>jobname is ${JOB_NAME}"
 ``` 
