@@ -130,7 +130,7 @@
     - = 1 1000 0100 0 0100 0101 1001 1001 1001 10001 1001 .. （取23位）
 
 
-### Java的数字是用什么表示的
+### Java的数字是用什么码球表示的，写个例子证明一下
 ```java
 
 // 11111111111111111111111110000101
@@ -138,6 +138,33 @@ int tt =- 123;
 System.out.println(Integer.toBinaryString(tt));
 
 ```
+
+### 回到原题
+float a = 0.125f;
+double b = 0.125d; 
+a-b == 0.0
+为什么相等，只不过恰好在二进制层面满足了要求。
+实际上你是可以造出这样看起来相等的数据的
+
+```java
+
+    System.out.println("//------test ");
+    System.out.println(3.15f - 3.15d);
+    System.out.println(3.25f - 3.25d);
+    System.out.println(3.215f - 3.215d);
+    System.out.println(3.625f - 3.625d);
+    System.out.println(3.250f - 3.250d);``
+    
+    //------test 
+    9.536743172944284E-8
+    0.0
+    -8.583068833445395E-8
+    0.0
+    0.0
+    
+```
+
+我想你应该发现了什么规律了.
 
 ### 附10道{Java测试}原题 ：
 
