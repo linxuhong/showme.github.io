@@ -1,7 +1,7 @@
-## Java测试题 g（111）会选择哪个 g(double d) 和 void g(Integer i) 
+## 当 g（111）遇上了 g(double d) 和 void g(Integer i) 
 
 
-### 关于void g(double d) 和 void g(Integer i) 调用 问题 
+### 有一道测试题目如下 
  
 > 某个类有两个重载方法：
 >  void g(double d) 和 void g(Integer i)，
