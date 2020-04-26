@@ -7,9 +7,9 @@
 >  void g(double d) 和 void g(Integer i)，
 >  那么 g(1) 的会调用哪个方法？
 >      A. 前者
-       B. 后者
-       C. 随机调用
-       D. 编译出错
+>       B. 后者
+>      C. 随机调用
+>      D. 编译出错
      
 
 
